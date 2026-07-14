@@ -1,0 +1,277 @@
+/* editor.module.scss - 企业级白色钢琴风编辑器页面 */
+
+$piano-black: #1a1a1a;
+$piano-white: #ffffff;
+$gold-accent: #b8944f;
+$slate-700: #333;
+$slate-400: #999;
+$slate-200: #e8e5de;
+$slate-100: #f5f3ef;
+$border-color: rgba(0, 0, 0, 0.06);
+
+// ==================== 全局背景 ====================
+
+.container {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #fafaf9 0%, #f0edf8 50%, #fafaf9 100%);
+  padding: 2.5rem 1.5rem 4rem;
+  position: relative;
+  overflow: hidden;
+
+  // 背景钢琴键条纹
+  &::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background:
+      repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 59px,
+        rgba(0, 0, 0, 0.008) 59px,
+        rgba(0, 0, 0, 0.008) 60px
+      );
+    pointer-events: none;
+    z-index: 0;
+  }
+}
+
+// ==================== 主卡片 ====================
+
+.card {
+  max-width: 960px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+  background: $piano-white;
+  border-radius: 4px;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 4px 16px rgba(0, 0, 0, 0.06),
+    0 12px 40px rgba(0, 0, 0, 0.04);
+
+  // 卡片顶部金色装饰线
+  &::before {
+    content: '';
+    display: block;
+    height: 3px;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      $gold-accent 25%,
+      $gold-accent 50%,
+      $gold-accent 75%,
+      transparent 100%
+    );
+  }
+}
+
+// ==================== 头部区域 ====================
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 2rem 2rem 1.5rem;
+  border-bottom: 1px solid $border-color;
+}
+
+.title {
+  h1 {
+    margin: 0;
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: $piano-black;
+    letter-spacing: -0.01em;
+    font-family: 'Georgia', 'Times New Roman', 'Noto Serif SC', serif;
+  }
+}
+
+.subtitle {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  color: $slate-400;
+  font-weight: 400;
+}
+
+// 操作按钮区域
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+
+  :global(.ant-btn) {
+    border-radius: 4px;
+    font-weight: 500;
+    font-size: 0.82rem;
+    height: 34px;
+    padding: 0 16px;
+    border: 1px solid $border-color;
+    color: $slate-700;
+    background: transparent;
+    transition: all 0.2s ease;
+
+    &:hover {
+      border-color: $gold-accent;
+      color: $gold-accent;
+    }
+  }
+
+  :global(.ant-btn-primary) {
+    background: $piano-black;
+    border-color: $piano-black;
+    color: $piano-white;
+
+    &:hover {
+      background: #333;
+      border-color: #333;
+    }
+  }
+
+  :global(.ant-switch) {
+    background: $slate-200;
+
+    &:global(.ant-switch-checked) {
+      background: $piano-black;
+    }
+  }
+}
+
+// ==================== 编辑器容器 ====================
+
+.editorWrapper {
+  margin: 0;
+  padding: 0 2rem;
+  min-height: 520px;
+  position: relative;
+
+  // 纸页纹理
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 2rem;
+    right: 2rem;
+    bottom: 0;
+    background-image:
+      linear-gradient(rgba(0, 0, 0, 0.025) 1px, transparent 1px);
+    background-size: 100% 28px;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.6;
+  }
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 500px;
+  color: $slate-400;
+  font-size: 0.9rem;
+  gap: 1rem;
+
+  // 添加钢琴音符动画
+  &::before {
+    content: '♪';
+    font-size: 2rem;
+    color: $gold-accent;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+// ==================== 使用提示 ====================
+
+.tips {
+  margin: 2rem 2rem 1.5rem;
+  padding: 1.25rem 1.5rem;
+  background: $slate-100;
+  border-left: 3px solid $gold-accent;
+  border-radius: 0 4px 4px 0;
+
+  h3 {
+    margin: 0 0 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: $slate-700;
+    letter-spacing: 0.04em;
+  }
+}
+
+.tipsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+}
+
+.tipItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.6rem 0.75rem;
+  background: $piano-white;
+  border: 1px solid $border-color;
+  border-radius: 4px;
+  transition: border-color 0.2s ease;
+
+  &:hover {
+    border-color: rgba($gold-accent, 0.3);
+  }
+
+  strong {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: $slate-700;
+  }
+
+  span {
+    font-size: 0.7rem;
+    color: $slate-400;
+    line-height: 1.5;
+  }
+}
+
+// ==================== 底部状态栏 ====================
+
+.statusBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.9rem 2rem;
+  border-top: 1px solid $border-color;
+  font-size: 0.72rem;
+  color: $slate-400;
+  letter-spacing: 0.02em;
+}
+
+.statusDot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 0.5rem;
+  background: $gold-accent;
+
+  &--edit {
+    background: #52c41a;
+  }
+
+  &--view {
+    background: $slate-400;
+  }
+}

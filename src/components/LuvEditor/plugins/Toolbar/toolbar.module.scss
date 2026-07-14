@@ -1,0 +1,139 @@
+/* toolbar.module.scss - 钢琴琴键风格工具栏 */
+
+$piano-black: #1a1a1a;
+$piano-white: #f8f5f0;
+$gold-accent: #c9a96e;
+$slate-800: #262626;
+$slate-600: #4a4a4a;
+$slate-200: #e5e3de;
+$border-color: rgba(0, 0, 0, 0.08);
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0;
+  padding: 0;
+  background: $piano-black;
+  border-bottom: 2px solid $gold-accent;
+  position: relative;
+
+  // 顶部金色装饰线
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: $gold-accent;
+    opacity: 0.3;
+  }
+
+  &--sticky {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+}
+
+.toolButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  color: rgba($piano-white, 0.55);
+  font-size: 13px;
+  position: relative;
+  border-radius: 0;
+
+  // 键盘白键样式
+  &::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 25%;
+    height: 50%;
+    width: 1px;
+    background: rgba($piano-white, 0.08);
+  }
+
+  &:hover {
+    background: rgba($piano-white, 0.08);
+    color: rgba($piano-white, 0.85);
+  }
+
+  &--active {
+    background: rgba($piano-white, 0.12);
+    color: $gold-accent;
+
+    // 激活指示器
+    &::before {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 4px;
+      right: 4px;
+      height: 2px;
+      background: $gold-accent;
+    }
+
+    &:hover {
+      background: rgba($piano-white, 0.16);
+      color: $gold-accent;
+    }
+  }
+
+  &:active {
+    background: rgba($piano-white, 0.04);
+  }
+}
+
+.textIcon {
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: inherit;
+}
+
+.divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 0.25rem;
+  background: rgba($piano-white, 0.1);
+}
+
+// 覆盖 Ant Design Dropdown 样式
+.dropdownMenu {
+  :global {
+    .ant-dropdown-menu {
+      background: $slate-800;
+      border: 1px solid rgba($piano-white, 0.1);
+      border-radius: 2px;
+      padding: 0.25rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+
+      .ant-dropdown-menu-item {
+        color: rgba($piano-white, 0.8);
+        border-radius: 2px;
+        padding: 0.5rem 1rem;
+        font-size: 0.82rem;
+        letter-spacing: 0.02em;
+        transition: all 0.15s ease;
+
+        &:hover {
+          background: rgba($piano-white, 0.08);
+          color: $piano-white;
+        }
+      }
+
+      .ant-dropdown-menu-item-divider {
+        background: rgba($piano-white, 0.06);
+        margin: 0.25rem 0;
+      }
+    }
+  }
+}

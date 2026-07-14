@@ -1,0 +1,101 @@
+/* note.module.scss - 音符样式 - 黑白钢琴风 */
+
+$piano-black: #1a1a1a;
+$piano-white: #f8f5f0;
+$gold-accent: #c9a96e;
+
+.note {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15em 0.5em;
+  margin: 0 0.15em;
+  background: $piano-black;
+  color: $piano-white;
+  border: 1px solid $piano-black;
+  border-radius: 2px;
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-weight: 500;
+  font-size: 0.9em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+  vertical-align: middle;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    border-color: $gold-accent;
+  }
+
+  &--selected {
+    border-color: $gold-accent;
+    box-shadow: 0 0 0 1px $gold-accent;
+  }
+
+  &--playing {
+    animation: notePlay 0.5s ease;
+
+    .playIcon {
+      color: $gold-accent;
+    }
+  }
+}
+
+.playIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-right: 3px;
+  color: rgba($piano-white, 0.5);
+  transition: color 0.2s ease;
+
+  &:hover {
+    color: $gold-accent;
+  }
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+.noteText {
+  min-width: 1.8em;
+  text-align: center;
+  font-size: 0.92em;
+  letter-spacing: 0.02em;
+}
+
+.input {
+  width: 3em;
+  padding: 0.1em 0.2em;
+  border: 1px solid $gold-accent;
+  border-radius: 2px;
+  font-family: inherit;
+  font-size: inherit;
+  text-align: center;
+  outline: none;
+  background: $piano-white;
+  color: $piano-black;
+
+  &:focus {
+    border-color: $piano-black;
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+  }
+}
+
+@keyframes notePlay {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.12);
+    background: $gold-accent;
+    border-color: $gold-accent;
+  }
+  100% {
+    transform: scale(1);
+  }
+}

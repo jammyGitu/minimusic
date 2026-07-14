@@ -1,0 +1,64 @@
+/* bili.module.scss - B站视频块样式 - 黑白钢琴风 */
+
+$piano-black: #1a1a1a;
+$piano-white: #f8f5f0;
+$gold-accent: #c9a96e;
+$slate-400: #999;
+$slate-200: #e5e3de;
+$border-color: rgba(0, 0, 0, 0.08);
+
+.inputContainer {
+  padding: 1.5rem;
+  background: $piano-white;
+  border: 2px dashed $border-color;
+  border-radius: 2px;
+  text-align: center;
+}
+
+.biliIcon {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1rem;
+  color: $slate-400;
+  opacity: 0.6;
+}
+
+.input {
+  margin-bottom: 1rem;
+  border-radius: 2px;
+  font-size: 0.88rem;
+}
+
+.submitBtn {
+  border-radius: 2px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  background: $piano-black;
+  border-color: $piano-black;
+  color: $piano-white;
+  letter-spacing: 0.02em;
+
+  &:hover {
+    background: #3a3a3a !important;
+    border-color: #3a3a3a !important;
+  }
+}
+
+.videoContainer {
+  position: relative;
+  width: 100%;
+  padding-bottom: 56.25%;
+  background: $piano-black;
+  border-radius: 2px;
+  overflow: hidden;
+  border: 1px solid $border-color;
+}
+
+.iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
