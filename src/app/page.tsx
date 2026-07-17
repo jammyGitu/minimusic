@@ -10,6 +10,8 @@ import {
   TableOutlined,
   FileTextOutlined,
   ArrowRightOutlined,
+  CustomerServiceOutlined,
+  PlaySquareOutlined,
 } from '@ant-design/icons'
 import styles from './home.module.scss'
 
@@ -29,7 +31,7 @@ const features: NavItem[] = [
   },
   {
     href: '/practice/harmony',
-    icon: <SoundOutlined />,
+    icon: <CustomerServiceOutlined />,
     title: '和弦辨认',
     desc: '听和弦选择正确的和弦类型，提升和声听觉',
   },
@@ -41,7 +43,7 @@ const features: NavItem[] = [
   },
   {
     href: '/practice/beat',
-    icon: <LayoutOutlined />,
+    icon: <PlaySquareOutlined />,
     title: '节奏练习',
     desc: '学习节奏型，提升节奏感和打击乐能力',
   },
@@ -83,7 +85,7 @@ const features: NavItem[] = [
   },
   {
     href: '/midi-roll',
-    icon: <DashboardOutlined />,
+    icon: <LayoutOutlined />,
     title: 'MIDI 钢琴卷帘',
     desc: '可视化音符编辑，创作音乐序列',
   },

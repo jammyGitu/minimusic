@@ -2,6 +2,50 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ==================== CSS 变量 ==================== */
+
+:root {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f3ef;
+  --bg-tertiary: #fafaf9;
+  --text-primary: #1a1a1a;
+  --text-secondary: #999999;
+  --text-muted: #bfbfbf;
+  --text-tertiary: #cccccc;
+  --border-color: rgba(0, 0, 0, 0.06);
+  --accent-color: #b8944f;
+  --accent-hover: #a0803f;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 24px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.12);
+  --key-white: #ffffff;
+  --key-white-hover: #f3f4f6;
+  --key-black: #1f2937;
+  --key-black-hover: #374151;
+}
+
+[data-theme='dark'] {
+  --bg-primary: #141414;
+  --bg-secondary: #1f1f1f;
+  --bg-tertiary: #262626;
+  --text-primary: #e8e8e8;
+  --text-secondary: #666666;
+  --text-muted: #4a4a4a;
+  --text-tertiary: #434343;
+  --border-color: rgba(255, 255, 255, 0.08);
+  --accent-color: #c9a84c;
+  --accent-hover: #d4b65f;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 24px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.5);
+  --key-white: #2a2a2a;
+  --key-white-hover: #333333;
+  --key-black: #111111;
+  --key-black-hover: #1a1a1a;
+}
+
+/* ==================== 全局重置 ==================== */
+
 *,
 *::before,
 *::after {
@@ -11,19 +55,57 @@
 html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: #ffffff;
+  background: var(--bg-primary);
 }
 
 body {
   margin: 0;
   padding: 0;
   font-family: 'Georgia', 'Times New Roman', 'Noto Serif SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  background: #ffffff;
-  color: #1a1a1a;
+  background: var(--bg-primary);
+  color: var(--text-primary);
   line-height: 1.6;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 a {
   color: inherit;
   text-decoration: none;
+}
+
+/* ==================== 滚动条 ==================== */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--text-tertiary);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* ==================== 选中文本 ==================== */
+
+::selection {
+  background: var(--accent-color);
+  color: #fff;
+}
+
+/* ==================== 全局过渡 ==================== */
+
+body,
+.ant-layout,
+.ant-menu,
+.ant-card,
+.ant-btn {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease !important;
 }

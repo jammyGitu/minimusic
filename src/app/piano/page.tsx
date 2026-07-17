@@ -3,28 +3,32 @@
 import { Typography, Card } from 'antd'
 import GlobalPiano from '@/components/Instruments/GlobalPiano'
 
-const { Title, Paragraph } = Typography
+const { Title, Paragraph, Text } = Typography
 
 export default function PianoPage() {
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-8">
-          <Title level={2}>🎹 虚拟钢琴</Title>
-          <Paragraph type="secondary">
-            点击琴键播放音符，体验真实的钢琴音色
-          </Paragraph>
-        </div>
-        
-        <Card className="flex justify-center items-center overflow-x-auto">
-          <GlobalPiano />
-        </Card>
-        
-        <div className="mt-8 text-center text-gray-500">
-          <Paragraph>
-            提示：点击琴键即可发声，支持从C3到C6的音域
-          </Paragraph>
-        </div>
+    <div className="flex flex-col items-center gap-4 py-4">
+      <div className="text-center">
+        <Title level={3} className="!mb-1">🎹 虚拟钢琴</Title>
+        <Paragraph type="secondary" className="!mb-0 text-sm">
+          点击琴键或使用键盘演奏，支持多种音色与八度切换
+        </Paragraph>
+      </div>
+
+      <Card
+        className="w-full flex justify-center overflow-x-auto"
+        styles={{ body: { padding: '16px 12px' } }}
+      >
+        <GlobalPiano />
+      </Card>
+
+      <div className="text-center space-y-1">
+        <Text type="secondary" className="text-xs block">
+          💡 提示：鼠标点击琴键或使用键盘 Z~M（白键）、S/D/G/H/J（黑键）演奏
+        </Text>
+        <Text type="secondary" className="text-xs block">
+          🎵 支持触屏拖拽滑音，点击位置越低力度越大
+        </Text>
       </div>
     </div>
   )

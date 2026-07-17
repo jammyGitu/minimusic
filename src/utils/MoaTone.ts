@@ -1,12 +1,31 @@
 /**
- * 音频引擎类 - 使用原生Web Audio API实现
- * 提供音符播放、和弦播放等核心音频能力
+ * 音频引擎类 - 基于 Tone.js 封装
+ * 提供音符播放、和弦播放、节拍器、录音等核心音频能力
  */
+import * as Tone from 'tone'
 
+export type SynthType = 'piano' | 'guitar' | 'organ' | 'strings' | 'bass'
+
+export interface MoaToneOptions {
+  volume?: number      // 0-1
+  synthType?: SynthType
+  bpm?: number
+}
+
+/**
+ * 音频引擎单例类
+ */
 export class MoaTone {
-  private audioContext: AudioContext | null = null
+  private synth!: Tone.PolySynth | Tone.Synth
+  private reverb!: Tone.Reverb
+  private volumeNode!: Tone.Volume
+  private metronomeSynth!: Tone.Synth
+  private _bpm: number = 120
   private isInitialized: boolean = false
-  private bpm: number = 120
+  private _synthType: SynthType = 'piano'
+
+  // 音符频率映射
+  private static readonly NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
   /**
    * 检查是否在浏览器环境中
@@ -16,107 +35,128 @@ export class MoaTone {
   }
 
   /**
-   * 获取或创建AudioContext
+   * 初始化音频引擎
+   * 必须在用户交互后调用
    */
-  private getAudioContext(): AudioContext {
-    if (!this.audioContext) {
-      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+  async init(options?: MoaToneOptions) {
+    if (!this.isBrowser()) return
+    if (this.isInitialized) {
+      if (options) this.applyOptions(options)
+      return
     }
-    return this.audioContext
+
+    await Tone.start()
+
+    // 音量控制
+    this.volumeNode = new Tone.Volume(this.toDecibels(options?.volume ?? 0.5)).toDestination()
+
+    // 混响
+    this.reverb = new Tone.Reverb({ decay: 1.5, wet: 0.3 }).connect(this.volumeNode)
+
+    // 主合成器 - 使用 PolySynth 支持多音
+    this.synth = new Tone.PolySynth(Tone.Synth, {
+      oscillator: { type: 'triangle' },
+      envelope: {
+        attack: 0.02,
+        decay: 0.1,
+        sustain: 0.3,
+        release: 0.8,
+      },
+    } as any).connect(this.reverb)
+
+    // 节拍器合成器
+    this.metronomeSynth = new Tone.Synth({
+      oscillator: { type: 'sine' },
+      envelope: { attack: 0.001, decay: 0.1, sustain: 0, release: 0 },
+    }).connect(this.volumeNode)
+
+    // 设置 BPM
+    Tone.getTransport().bpm.value = options?.bpm ?? this._bpm
+
+    this._synthType = options?.synthType ?? 'piano'
+    this.isInitialized = true
+  }
+
+  private applyOptions(options: MoaToneOptions) {
+    if (options.volume !== undefined) {
+      this.volumeNode.volume.value = this.toDecibels(options.volume)
+    }
+    if (options.bpm !== undefined) {
+      this.setBPM(options.bpm)
+    }
+    if (options.synthType !== undefined) {
+      this.setSynthType(options.synthType)
+    }
+  }
+
+  private toDecibels(volume: number): number {
+    return volume <= 0 ? -60 : 20 * Math.log10(volume)
   }
 
   /**
-   * 初始化音频上下文
-   * 必须在用户交互后调用
+   * 切换音色
    */
-  async init() {
-    if (!this.isBrowser()) return
-    if (this.isInitialized) return
-    
-    const ctx = this.getAudioContext()
-    if (ctx.state === 'suspended') {
-      await ctx.resume()
+  setSynthType(type: SynthType) {
+    this._synthType = type
+    if (!this.isInitialized) return
+
+    this.synth.dispose()
+
+    const oscMap: Record<SynthType, OscillatorType> = {
+      piano: 'triangle',
+      guitar: 'triangle',
+      organ: 'sawtooth',
+      strings: 'sawtooth',
+      bass: 'triangle',
     }
-    this.isInitialized = true
+
+    const envMap: Record<SynthType, any> = {
+      piano: { attack: 0.005, decay: 0.2, sustain: 0.2, release: 1.2 },
+      guitar: { attack: 0.002, decay: 0.3, sustain: 0.1, release: 0.8 },
+      organ: { attack: 0.01, decay: 0.1, sustain: 0.7, release: 0.3 },
+      strings: { attack: 0.1, decay: 0.2, sustain: 0.6, release: 1.5 },
+      bass: { attack: 0.01, decay: 0.1, sustain: 0.3, release: 0.5 },
+    }
+
+    this.synth = new Tone.PolySynth(Tone.Synth, {
+      oscillator: { type: oscMap[type] },
+      envelope: envMap[type],
+    } as any).connect(this.reverb)
+  }
+
+  /**
+   * 获取当前音色
+   */
+  getSynthType(): SynthType {
+    return this._synthType
   }
 
   /**
    * 将音符名称转换为频率
-   * @param note 音符名称，如 "C4", "D#5"
    */
-  private noteToFrequency(note: string): number {
-    const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+  noteToFrequency(note: string): number {
     const match = note.match(/^([A-G]#?)(\d+)$/)
-    
     if (!match) return 440
-    
     const noteName = match[1]
     const octave = parseInt(match[2])
-    
-    // 验证八度范围
-    if (isNaN(octave) || octave < 0 || octave > 10) return 440
-    
-    const semitone = NOTE_NAMES.indexOf(noteName)
-    
+    const semitone = MoaTone.NOTE_NAMES.indexOf(noteName)
     if (semitone === -1) return 440
-    
-    // A4 = 440 Hz (MIDI note 69)
-    const midiNote = semitone + octave * 12 + 12 // C0 is MIDI note 12
-    
-    // 计算频率并确保在有效范围内
+    const midiNote = semitone + octave * 12 + 12
     const frequency = 440 * Math.pow(2, (midiNote - 69) / 12)
-    
-    // 验证频率是否有效
-    if (isNaN(frequency) || !isFinite(frequency) || frequency <= 0) {
-      return 440
-    }
-    
-    return frequency
+    return isNaN(frequency) || !isFinite(frequency) || frequency <= 0 ? 440 : frequency
   }
 
   /**
    * 播放单个音符
    * @param note 音符名称，如 "C4", "D#5"
-   * @param duration 持续时间（秒），默认0.5秒
+   * @param duration 持续时间（秒），默认0.5
+   * @param time 可选，在指定时间播放（用于调度）
    */
-  async playNote(note: string, duration: number = 0.5) {
-    if (!this.isBrowser()) return
-    await this.init()
-    
-    // 验证持续时间
-    if (isNaN(duration) || !isFinite(duration) || duration <= 0) {
-      duration = 0.5
-    }
-    
-    const ctx = this.getAudioContext()
-    const oscillator = ctx.createOscillator()
-    const gainNode = ctx.createGain()
-    
-    oscillator.connect(gainNode)
-    gainNode.connect(ctx.destination)
-    
-    oscillator.type = 'triangle'
-    
-    const frequency = this.noteToFrequency(note)
-    // 验证频率
-    if (isFinite(frequency) && frequency > 0) {
-      oscillator.frequency.setValueAtTime(frequency, ctx.currentTime)
-    } else {
-      oscillator.frequency.setValueAtTime(440, ctx.currentTime)
-    }
-    
-    // 音量包络 - 使用线性淡出避免指数衰减的问题
-    const currentTime = ctx.currentTime
-    const endTime = currentTime + duration
-    
-    gainNode.gain.setValueAtTime(0.1, currentTime)
-    
-    // 使用 linearRampToValueAtTime 替代 exponentialRampToValueAtTime
-    // 避免指数衰减时目标值过小导致的问题
-    gainNode.gain.linearRampToValueAtTime(0.01, endTime)
-    
-    oscillator.start(currentTime)
-    oscillator.stop(endTime)
+  playNote(note: string, duration: number = 0.5, time?: number) {
+    if (!this.isInitialized) return
+    const freq = this.noteToFrequency(note)
+    const now = time ?? Tone.now()
+    ;(this.synth as Tone.PolySynth).triggerAttackRelease(freq, duration, now)
   }
 
   /**
@@ -124,13 +164,11 @@ export class MoaTone {
    * @param notes 音符数组
    * @param duration 持续时间（秒）
    */
-  async playNotes(notes: string[], duration: number = 0.8) {
-    if (!this.isBrowser()) return
-    await this.init()
-    
-    notes.forEach(note => {
-      this.playNote(note, duration)
-    })
+  playNotes(notes: string[], duration: number = 0.8) {
+    if (!this.isInitialized) return
+    const freqs = notes.map(n => this.noteToFrequency(n))
+    const now = Tone.now()
+    ;(this.synth as Tone.PolySynth).triggerAttackRelease(freqs, duration, now)
   }
 
   /**
@@ -138,67 +176,87 @@ export class MoaTone {
    * @param notes 音符数组
    * @param interval 每个音符之间的间隔时间（秒）
    */
-  async playSequence(notes: string[], interval: number = 0.5) {
-    if (!this.isBrowser()) return
-    await this.init()
-    
+  async playSequence(notes: string[], interval: number = 0.5): Promise<void> {
+    if (!this.isInitialized) return
+    const now = Tone.now()
     notes.forEach((note, index) => {
-      setTimeout(() => {
-        this.playNote(note, interval * 0.8)
-      }, index * interval * 1000)
+      this.playNote(note, interval * 0.8, now + index * interval)
+    })
+    // 返回一个在序列完成后 resolve 的 Promise
+    return new Promise(resolve => {
+      setTimeout(resolve, notes.length * interval * 1000 + 200)
     })
   }
 
   /**
-   * 设置BPM
-   * @param bpm 每分钟节拍数
+   * 设置音量
+   * @param volume 0-1
+   */
+  setVolume(volume: number) {
+    if (!this.isInitialized) return
+    this.volumeNode.volume.value = this.toDecibels(Math.max(0, Math.min(1, volume)))
+  }
+
+  /**
+   * 设置 BPM
    */
   setBPM(bpm: number) {
-    this.bpm = bpm
+    this._bpm = bpm
+    if (this.isInitialized) {
+      Tone.getTransport().bpm.value = bpm
+    }
   }
 
   /**
-   * 获取当前BPM
+   * 获取当前 BPM
    */
   getBPM(): number {
-    return this.bpm
+    return this._bpm
   }
 
   /**
-   * 播放节拍器滴答声
+   * 播放节拍器
+   * @param beats 节拍数，0 表示持续播放
    */
-  async playMetronome() {
-    if (!this.isBrowser()) return
-    await this.init()
-    
-    const ctx = this.getAudioContext()
-    const oscillator = ctx.createOscillator()
-    const gainNode = ctx.createGain()
-    
-    oscillator.connect(gainNode)
-    gainNode.connect(ctx.destination)
-    
-    oscillator.type = 'sine'
-    oscillator.frequency.setValueAtTime(880, ctx.currentTime)
-    
-    gainNode.gain.setValueAtTime(0.3, ctx.currentTime)
-    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1)
-    
-    oscillator.start(ctx.currentTime)
-    oscillator.stop(ctx.currentTime + 0.1)
+  startMetronome(beats: number = 0) {
+    if (!this.isInitialized) return
+    const bpm = this._bpm
+    const beatInterval = 60 / bpm
+
+    let count = 0
+    const loop = new Tone.Loop((time) => {
+      const isDownbeat = count % 4 === 0
+      this.metronomeSynth.triggerAttackRelease(
+        isDownbeat ? 880 : 660,
+        isDownbeat ? 0.08 : 0.05,
+        time,
+        isDownbeat ? 0.6 : 0.3
+      )
+      count++
+      if (beats > 0 && count >= beats) {
+        loop.stop()
+      }
+    }, beatInterval)
+
+    loop.start(0)
+    Tone.getTransport().start()
+    return loop
+  }
+
+  /**
+   * 停止节拍器
+   */
+  stopMetronome() {
+    Tone.getTransport().cancel()
+    Tone.getTransport().stop()
   }
 
   /**
    * 停止所有声音
    */
   stopAll() {
-    if (!this.isBrowser()) return
-    if (this.audioContext) {
-      // 无法直接停止，但可以创建静音增益节点
-      this.audioContext.close()
-      this.audioContext = null
-      this.isInitialized = false
-    }
+    if (!this.isInitialized) return
+    ;(this.synth as Tone.PolySynth).releaseAll()
   }
 
   /**
@@ -206,6 +264,14 @@ export class MoaTone {
    */
   dispose() {
     this.stopAll()
+    this.stopMetronome()
+    if (this.isInitialized) {
+      this.synth.dispose()
+      this.reverb.dispose()
+      this.volumeNode.dispose()
+      this.metronomeSynth.dispose()
+      this.isInitialized = false
+    }
   }
 }
 

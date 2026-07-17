@@ -93,7 +93,7 @@ export const BiliBlock = memo((props: any) => {
   }, [handleSubmit]);
   
   // 输入变化处理
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setInputValue(e.target.value);
   }, []);
   
