@@ -1,209 +1,284 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import { Card, Button, Progress, message, Space, Typography, Tag } from 'antd'
-import { ReloadOutlined, SoundOutlined } from '@ant-design/icons'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { Card, Button, Progress, message, Space, Typography, Segmented, Switch, Tag } from 'antd'
+import { ReloadOutlined, SoundOutlined, FireOutlined, ClockCircleOutlined } from '@ant-design/icons'
 import { moaTone } from '@/utils/MoaTone'
 import { CHORD_TYPES, buildChord } from '@/utils/chord'
+import { addPracticeRecord } from '@/stores/progress'
 
 const { Title, Text } = Typography
 
-// 常见和弦进行
-const chordProgressions = [
-  { name: 'I-IV-V', progression: ['maj', 'maj', 'maj'], degrees: ['I', 'IV', 'V'] },
-  { name: 'I-vi-IV-V', progression: ['maj', 'min', 'maj', 'maj'], degrees: ['I', 'vi', 'IV', 'V'] },
-  { name: 'ii-V-I', progression: ['min7', 'dom7', 'maj7'], degrees: ['ii', 'V', 'I'] },
-  { name: 'I-V-vi-IV', progression: ['maj', 'maj', 'min', 'maj'], degrees: ['I', 'V', 'vi', 'IV'] },
-  { name: 'I-IV-viio-V', progression: ['maj', 'maj', 'dim', 'maj'], degrees: ['I', 'IV', 'viio', 'V'] },
-]
+type Difficulty = 'easy' | 'medium' | 'hard'
 
-interface PracticeState {
-  pass: number
-  all: number
-  current: {
-    root: string
-    progression: string[]
-    degrees: string[]
-    chordNotes: string[][]
-  }
-  selectedAnswer: string | null
+// 和弦进行定义：名称、度数、和弦类型
+interface ProgressionDef {
+  name: string
+  degrees: string[]
+  chordTypes: string[]
 }
 
-/**
- * 和弦进行练习组件
- */
+const NOTE_NAMES_LIST = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+const DEGREE_OFFSETS: Record<string, number> = {
+  'I': 0, 'ii': 2, 'iii': 4, 'IV': 5, 'V': 7, 'vi': 9, 'vii°': 11, 'viio': 11,
+}
+
+const PROGRESSIONS_EASY: ProgressionDef[] = [
+  { name: 'I-IV-V-I', degrees: ['I', 'IV', 'V', 'I'], chordTypes: ['maj', 'maj', 'maj', 'maj'] },
+  { name: 'I-V-vi-IV', degrees: ['I', 'V', 'vi', 'IV'], chordTypes: ['maj', 'maj', 'min', 'maj'] },
+]
+
+const PROGRESSIONS_MEDIUM: ProgressionDef[] = [
+  ...PROGRESSIONS_EASY,
+  { name: 'I-vi-IV-V', degrees: ['I', 'vi', 'IV', 'V'], chordTypes: ['maj', 'min', 'maj', 'maj'] },
+  { name: 'ii-V-I', degrees: ['ii', 'V', 'I'], chordTypes: ['min7', 'dom7', 'maj7'] },
+  { name: 'I-vi-ii-V', degrees: ['I', 'vi', 'ii', 'V'], chordTypes: ['maj', 'min', 'min', 'maj'] },
+]
+
+const PROGRESSIONS_HARD: ProgressionDef[] = [
+  ...PROGRESSIONS_MEDIUM,
+  { name: 'I-IV-viio-iii-vi-ii-V-I', degrees: ['I', 'IV', 'vii°', 'iii', 'vi', 'ii', 'V', 'I'], chordTypes: ['maj', 'maj', 'dim', 'min', 'min', 'min', 'maj', 'maj'] },
+  { name: 'I-V-vi-iii-IV-I-IV-V', degrees: ['I', 'V', 'vi', 'iii', 'IV', 'I', 'IV', 'V'], chordTypes: ['maj', 'maj', 'min', 'min', 'maj', 'maj', 'maj', 'maj'] },
+]
+
+const DIFFICULTY_MAP: Record<Difficulty, ProgressionDef[]> = {
+  easy: PROGRESSIONS_EASY,
+  medium: PROGRESSIONS_MEDIUM,
+  hard: PROGRESSIONS_HARD,
+}
+
 export default function ChordProgressionPractice() {
-  const [state, setState] = useState<PracticeState>({
-    pass: 0,
-    all: 0,
-    current: {
-      root: 'C',
-      progression: [],
-      degrees: [],
-      chordNotes: [],
-    },
-    selectedAnswer: null,
-  })
-  
+  const [pass, setPass] = useState(0)
+  const [all, setAll] = useState(0)
+  const [combo, setCombo] = useState(0)
+  const [root, setRoot] = useState('C')
+  const [progression, setProgression] = useState<ProgressionDef | null>(null)
+  const [chordNotes, setChordNotes] = useState<string[][]>([])
+  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
-  
-  // 生成新的练习题
-  const generateQuestion = () => {
-    // 随机选择一个和弦进行
-    const progression = chordProgressions[Math.floor(Math.random() * chordProgressions.length)]
-    
-    // 随机选择根音
-    const roots = ['C', 'D', 'E', 'F', 'G', 'A', 'B']
-    const root = roots[Math.floor(Math.random() * roots.length)]
-    
-    // 构建所有和弦音符
-    const chordNotes = progression.progression.map((type, index) => {
-      const chordType = CHORD_TYPES[type]
+  const [difficulty, setDifficulty] = useState<Difficulty>('easy')
+  const [timerOn, setTimerOn] = useState(false)
+  const [timeLeft, setTimeLeft] = useState(20)
+  const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null)
+
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const initRef = useRef(false)
+
+  const progList = DIFFICULTY_MAP[difficulty]
+
+  const getChordRoot = useCallback((rt: string, degree: string): string => {
+    const offset = DEGREE_OFFSETS[degree] ?? 0
+    const rootIdx = NOTE_NAMES_LIST.indexOf(rt)
+    return NOTE_NAMES_LIST[(rootIdx + offset) % 12]
+  }, [])
+
+  const generateQuestion = useCallback(() => {
+    const prog = progList[Math.floor(Math.random() * progList.length)]
+    const noteRoots = ['C', 'D', 'E', 'F', 'G', 'A', 'B']
+    const rt = noteRoots[Math.floor(Math.random() * noteRoots.length)]
+
+    const notes = prog.degrees.map((deg, i) => {
+      const chordType = CHORD_TYPES[prog.chordTypes[i]]
       if (!chordType) return []
-      const chordRoot = getChordRoot(root, index, progression)
+      const chordRoot = getChordRoot(rt, deg)
       return buildChord(`${chordRoot}4`, chordType)
     })
-    
-    setState(prev => ({
-      ...prev,
-      current: {
-        root,
-        progression: progression.progression,
-        degrees: progression.degrees,
-        chordNotes,
-      },
-      selectedAnswer: null,
-    }))
-  }
-  
-  // 根据度数获取和弦根音
-  const getChordRoot = (root: string, index: number, progression: typeof chordProgressions[0]): string => {
-    const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
-    const degreeOffsets: Record<string, number> = {
-      'I': 0, 'ii': 2, 'iii': 4, 'IV': 5, 'V': 7, 'vi': 9, 'vii': 11, 'viio': 11,
-    }
-    
-    const degree = progression.degrees[index]
-    const offset = degreeOffsets[degree] || 0
-    const rootIndex = NOTE_NAMES.indexOf(root)
-    const newIndex = (rootIndex + offset) % 12
-    
-    return NOTE_NAMES[newIndex]
-  }
-  
-  // 播放和弦进行
-  const playProgression = async () => {
+
+    setRoot(rt)
+    setProgression(prog)
+    setChordNotes(notes)
+    setSelectedAnswer(null)
+    setFeedback(null)
+    setTimeLeft(20)
+    if (timerRef.current) clearInterval(timerRef.current)
+  }, [progList, getChordRoot])
+
+  const playProgression = useCallback(async () => {
     setIsPlaying(true)
-    
-    for (let i = 0; i < state.current.chordNotes.length; i++) {
-      if (state.current.chordNotes[i].length > 0) {
-        await moaTone.playNotes(state.current.chordNotes[i], 0.8)
+    await moaTone.init()
+    for (const notes of chordNotes) {
+      if (notes.length > 0) {
+        moaTone.playNotes(notes, 0.7)
       }
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await new Promise(resolve => setTimeout(resolve, 900))
     }
-    
     setIsPlaying(false)
-  }
-  
-  // 选择答案
-  const handleAnswer = (name: string) => {
-    setState(prev => ({ ...prev, selectedAnswer: name }))
-    
-    // 找到匹配的和弦进行
-    const matchedProgression = chordProgressions.find(p => p.name === name)
-    
-    if (matchedProgression) {
-      const isCorrect = JSON.stringify(matchedProgression.progression) === JSON.stringify(state.current.progression)
-      
-      setState(prev => ({
-        ...prev,
-        pass: isCorrect ? prev.pass + 1 : prev.pass,
-        all: prev.all + 1,
-      }))
-      
-      if (isCorrect) {
-        message.success('回答正确！')
-        setTimeout(generateQuestion, 1500)
+  }, [chordNotes])
+
+  const playFeedbackSound = useCallback(async (correct: boolean) => {
+    await moaTone.init()
+    if (correct) {
+      await moaTone.playSequence(['C5', 'E5', 'G5', 'C6'], 0.12)
+    } else {
+      moaTone.playNote('C3', 0.3)
+    }
+  }, [])
+
+  const handleAnswer = useCallback((name: string) => {
+    if (selectedAnswer) return
+    if (timerRef.current) clearInterval(timerRef.current)
+
+    setSelectedAnswer(name)
+    const isCorrect = name === progression?.name
+    setFeedback(isCorrect ? 'correct' : 'wrong')
+
+    if (isCorrect) {
+      const newCombo = combo + 1
+      setCombo(newCombo)
+      setPass(p => p + 1)
+      setAll(a => a + 1)
+      playFeedbackSound(true)
+      if (newCombo >= 5 && newCombo % 5 === 0) {
+        message.success(`🔥 ${newCombo}连击！太棒了！`)
       } else {
-        const correctName = chordProgressions.find(
-          p => JSON.stringify(p.progression) === JSON.stringify(state.current.progression)
-        )?.name
-        message.error(`回答错误，正确答案是: ${correctName}`)
+        message.success('回答正确！')
+      }
+      setTimeout(generateQuestion, 1200)
+    } else {
+      setCombo(0)
+      setAll(a => a + 1)
+      playFeedbackSound(false)
+      message.error(`回答错误，正确答案是：${progression?.name}`)
+    }
+
+    addPracticeRecord('chord-progression', isCorrect ? 1 : 0, 1)
+  }, [selectedAnswer, progression, combo, generateQuestion, playFeedbackSound])
+
+  useEffect(() => {
+    if (timerOn && !selectedAnswer && timeLeft > 0) {
+      timerRef.current = setTimeout(() => setTimeLeft(t => t - 1), 1000)
+    } else if (timeLeft === 0 && !selectedAnswer) {
+      setSelectedAnswer('超时')
+      setFeedback('wrong')
+      setCombo(0)
+      setAll(a => a + 1)
+      playFeedbackSound(false)
+      message.error(`时间到！正确答案是：${progression?.name}`)
+      addPracticeRecord('chord-progression', 0, 1)
+    }
+    return () => { if (timerRef.current) clearTimeout(timerRef.current) }
+  }, [timerOn, timeLeft, selectedAnswer, progression, playFeedbackSound])
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      if (e.code === 'Space') { e.preventDefault(); playProgression() }
+      if (e.code === 'ArrowRight') { e.preventDefault(); generateQuestion() }
+      const num = parseInt(e.key)
+      if (num >= 1 && num <= Math.min(9, progList.length) && !selectedAnswer) {
+        e.preventDefault()
+        handleAnswer(progList[num - 1].name)
       }
     }
-  }
-  
-  // 初始化
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [playProgression, generateQuestion, handleAnswer, progList, selectedAnswer])
+
   useEffect(() => {
-    generateQuestion()
-  }, [])
-  
-  const accuracy = state.all > 0 ? Math.round((state.pass / state.all) * 100) : 0
-  
+    if (!initRef.current) {
+      initRef.current = true
+      generateQuestion()
+    }
+  }, [generateQuestion])
+
+  const accuracy = all > 0 ? Math.round((pass / all) * 100) : 0
+
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <Card>
-        <div className="text-center mb-6">
-          <Title level={2}>和弦进行练习</Title>
-          <Text type="secondary">听和弦进行，选择正确的和弦进行名称</Text>
+    <div className="max-w-4xl mx-auto p-4 md:p-6">
+      <Card className={feedback === 'correct' ? 'ring-2 ring-green-400' : feedback === 'wrong' ? 'ring-2 ring-red-400' : ''}
+        style={{ transition: 'box-shadow 0.3s' }}>
+        <div className="text-center mb-4">
+          <Title level={2} className="!mb-1">和弦进行练习</Title>
+          <Text type="secondary">听和弦进行，选择正确的和声进行模式</Text>
           <div className="mt-2">
-            <Tag color="blue">当前调性: {state.current.root}大调</Tag>
+            <Tag color="blue">当前调性：{root}大调</Tag>
           </div>
         </div>
-        
-        {/* 统计信息 */}
-        <div className="mb-6">
-          <Space size="large">
-            <Text>正确: {state.pass}</Text>
-            <Text>总数: {state.all}</Text>
-            <Text>正确率: {accuracy}%</Text>
+
+        <div className="flex flex-wrap justify-center items-center gap-3 mb-4">
+          <Segmented value={difficulty} onChange={(v) => { setDifficulty(v as Difficulty); setTimeout(generateQuestion, 0) }}
+            options={[{ label: '初级', value: 'easy' }, { label: '中级', value: 'medium' }, { label: '高级', value: 'hard' }]} />
+          <Space>
+            <ClockCircleOutlined />
+            <Switch checked={timerOn} onChange={setTimerOn} size="small" />
+            <Text type="secondary" className="text-xs">倒计时</Text>
           </Space>
-          <Progress percent={accuracy} showInfo={false} className="mt-2" />
+          {timerOn && !selectedAnswer && <Tag color={timeLeft <= 5 ? 'red' : 'blue'}>{timeLeft}s</Tag>}
         </div>
-        
-        {/* 播放按钮 */}
-        <div className="text-center mb-6">
-          <Button
-            type="primary"
-            size="large"
-            icon={<SoundOutlined />}
-            onClick={playProgression}
-            loading={isPlaying}
-          >
-            播放和弦进行
+
+        <div className="mb-4">
+          <div className="flex flex-wrap justify-center items-center gap-3">
+            <Tag color="green">✓ {pass}</Tag>
+            <Tag color="default">共 {all}</Tag>
+            <Tag color="blue">{accuracy}%</Tag>
+            {combo >= 2 && <Tag color="orange" icon={<FireOutlined />}>{combo}连击</Tag>}
+          </div>
+          <Progress percent={accuracy} showInfo={false} className="mt-2" size="small"
+            strokeColor={{ '0%': '#1677ff', '100%': '#52c41a' }} />
+        </div>
+
+        <div className="text-center mb-5">
+          <Button type="primary" size="large" icon={<SoundOutlined />}
+            onClick={playProgression} loading={isPlaying}>
+            播放和弦进行 <Tag className="ml-2" color="default">Space</Tag>
           </Button>
-          <Button
-            size="large"
-            icon={<ReloadOutlined />}
-            onClick={generateQuestion}
-            className="ml-4"
-          >
-            下一题
+          <Button size="large" icon={<ReloadOutlined />} onClick={generateQuestion} className="ml-3">
+            下一题 <Tag className="ml-1" color="default">→</Tag>
           </Button>
         </div>
-        
-        {/* 当前和弦进行预览 */}
-        <div className="flex justify-center gap-2 mb-6 flex-wrap">
-          {state.current.degrees.map((degree, index) => (
-            <Tag key={index} color="green" className="text-lg px-4 py-2">
-              {degree}
-            </Tag>
-          ))}
+
+        {/* 度数预览 */}
+        {progression && (
+          <div className="flex justify-center gap-2 mb-5 flex-wrap">
+            {progression.degrees.map((deg, idx) => (
+              <Tag key={idx} color="purple" className="text-base px-3 py-1">
+                {deg}
+                <Text type="secondary" className="text-xs ml-1">
+                  ({progression.chordTypes[idx]})
+                </Text>
+              </Tag>
+            ))}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
+          {progList.map((prog, idx) => {
+            const isSelected = selectedAnswer === prog.name
+            const isCorrectAns = prog.name === progression?.name
+            let btnType: 'default' | 'primary' = 'default'
+            let btnDanger = false
+            if (isSelected && isCorrectAns) btnType = 'primary'
+            else if (isSelected && !isCorrectAns) btnDanger = true
+            else if (selectedAnswer && isCorrectAns) btnType = 'primary'
+
+            return (
+              <Button key={prog.name} size="large"
+                onClick={() => handleAnswer(prog.name)} disabled={!!selectedAnswer}
+                type={btnType} danger={btnDanger} className="text-left h-auto py-3">
+                <span className="font-bold mr-2 text-gray-400">{idx + 1}.</span>
+                <span className="font-medium">{prog.name}</span>
+                <Text type="secondary" className="text-xs ml-2">
+                  ({prog.degrees.join('-')})
+                </Text>
+              </Button>
+            )
+          })}
         </div>
-        
-        {/* 答案选项 */}
-        <div className="grid grid-cols-2 gap-3">
-          {chordProgressions.map(prog => (
-            <Button
-              key={prog.name}
-              size="large"
-              onClick={() => handleAnswer(prog.name)}
-              disabled={state.selectedAnswer !== null}
-              type={state.selectedAnswer === prog.name ? 'primary' : 'default'}
-            >
-              {prog.name}
-            </Button>
-          ))}
+
+        {selectedAnswer && (
+          <div className={`mt-5 text-center p-3 rounded-lg ${feedback === 'correct' ? 'bg-green-50' : 'bg-red-50'}`}>
+            <Text type={feedback === 'correct' ? 'success' : 'danger'} strong>
+              {feedback === 'correct' ? '✓ 回答正确！' : `✗ 回答错误！正确答案：${progression?.name}`}
+            </Text>
+          </div>
+        )}
+
+        <div className="mt-5 text-center">
+          <Text type="secondary" className="text-xs">
+            快捷键：<Tag color="default" className="text-xs">Space</Tag> 播放
+            <Tag color="default" className="text-xs ml-1">1-{progList.length}</Tag> 选答案
+            <Tag color="default" className="text-xs ml-1">→</Tag> 下一题
+          </Text>
         </div>
       </Card>
     </div>

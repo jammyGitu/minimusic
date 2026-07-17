@@ -9,7 +9,7 @@ import { proxy } from 'valtio'
  * 练习记录接口
  */
 export interface PracticeRecord {
-  type: 'interval' | 'harmony' | 'melody' | 'rhythm'
+  type: 'interval' | 'harmony' | 'melody' | 'rhythm' | 'chord-progression' | 'staff-note'
   timestamp: number
   correct: number
   total: number
