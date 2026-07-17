@@ -1,131 +1,155 @@
 'use client'
 
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { Card, Button, Slider, Space, Select, Tooltip } from 'antd'
-import { PlayCircleOutlined, PauseCircleOutlined, DeleteOutlined, UndoOutlined, RedoOutlined } from '@ant-design/icons'
+import { Card, Button, Slider, Select, Typography, Space, Tooltip, Row, Col, message } from 'antd'
+import {
+  PlayCircleOutlined,
+  PauseCircleOutlined,
+  DeleteOutlined,
+  UndoOutlined,
+  RedoOutlined,
+  SaveOutlined,
+  ClearOutlined,
+  PlusOutlined,
+  MinusOutlined,
+} from '@ant-design/icons'
 import { moaTone } from '@/utils/MoaTone'
 
-interface Note {
+const { Title, Text } = Typography
+
+interface MidiNote {
   id: string
-  pitch: number // MIDI音符编号 (0-127)
-  start: number // 起始时间（步数）
-  duration: number // 持续时间（步数）
-  velocity: number // 力度 0-127
+  pitch: number
+  start: number
+  duration: number
+  velocity: number
 }
 
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
-// 将MIDI音符转换为显示名称
 const midiToNoteName = (midi: number): string => {
   const octave = Math.floor(midi / 12) - 1
   const noteIndex = midi % 12
   return `${NOTE_NAMES[noteIndex]}${octave}`
 }
 
-// 将音符名称转换为MIDI编号
-const noteNameToMidi = (name: string): number => {
-  const match = name.match(/^([A-G]#?)(\d+)$/)
-  if (!match) return 60
-  const [, note, octave] = match
-  const noteIndex = NOTE_NAMES.indexOf(note)
-  if (noteIndex === -1) return 60
-  return (parseInt(octave) + 1) * 12 + noteIndex
-}
+const COLORS = ['#1677ff', '#52c41a', '#fa8c16', '#eb2f96', '#722ed1', '#13c2c2', '#faad14', '#f5222d']
 
-/**
- * MIDI钢琴卷帘编辑器组件
- * 参考 twomoons 的 MoaRoll 实现
- */
+// 预设旋律
+const PRESETS: { name: string; notes: { pitch: number; start: number; duration: number }[] }[] = [
+  {
+    name: 'C大调音阶',
+    notes: [60, 62, 64, 65, 67, 69, 71, 72].map((p, i) => ({ pitch: p, start: i, duration: 1 })),
+  },
+  {
+    name: '小星星',
+    notes: [
+      { pitch: 60, start: 0, duration: 1 }, { pitch: 60, start: 1, duration: 1 },
+      { pitch: 67, start: 2, duration: 1 }, { pitch: 67, start: 3, duration: 1 },
+      { pitch: 69, start: 4, duration: 1 }, { pitch: 69, start: 5, duration: 1 },
+      { pitch: 67, start: 6, duration: 2 },
+      { pitch: 65, start: 8, duration: 1 }, { pitch: 65, start: 9, duration: 1 },
+      { pitch: 64, start: 10, duration: 1 }, { pitch: 64, start: 11, duration: 1 },
+      { pitch: 62, start: 12, duration: 1 }, { pitch: 62, start: 13, duration: 1 },
+      { pitch: 60, start: 14, duration: 2 },
+    ],
+  },
+  {
+    name: '欢乐颂片段',
+    notes: [
+      { pitch: 64, start: 0, duration: 1 }, { pitch: 64, start: 1, duration: 1 },
+      { pitch: 65, start: 2, duration: 1 }, { pitch: 67, start: 3, duration: 1 },
+      { pitch: 67, start: 4, duration: 1 }, { pitch: 65, start: 5, duration: 1 },
+      { pitch: 64, start: 6, duration: 1 }, { pitch: 62, start: 7, duration: 1 },
+      { pitch: 60, start: 8, duration: 1 }, { pitch: 60, start: 9, duration: 1 },
+      { pitch: 62, start: 10, duration: 1 }, { pitch: 64, start: 11, duration: 1 },
+      { pitch: 64, start: 12, duration: 1.5 }, { pitch: 62, start: 13.5, duration: 0.5 },
+      { pitch: 62, start: 14, duration: 2 },
+    ],
+  },
+]
+
 export default function MidiRollEditor() {
-  // 状态
-  const [notes, setNotes] = useState<Note[]>([])
+  const [notes, setNotes] = useState<MidiNote[]>([])
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentStep, setCurrentStep] = useState(-1)
   const [tempo, setTempo] = useState(120)
-  const [timeLength, setTimeLength] = useState(16) // 总步数
-  const [octaveStart, setOctaveStart] = useState(3) // 起始八度
-  const [octaveCount, setOctaveCount] = useState(4) // 显示八度数
+  const [steps, setSteps] = useState(16)
+  const [octaveStart, setOctaveStart] = useState(3)
+  const [octaveCount, setOctaveCount] = useState(3)
   const [activeKeys, setActiveKeys] = useState<Set<number>>(new Set())
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState<{ pitch: number; step: number } | null>(null)
-  const [history, setHistory] = useState<Note[][]>([])
-  const [historyIndex, setHistoryIndex] = useState(-1)
-  
+  const [dragCurrent, setDragCurrent] = useState<{ pitch: number; step: number } | null>(null)
+  const [history, setHistory] = useState<MidiNote[][]>([[]])
+  const [historyIndex, setHistoryIndex] = useState(0)
+  const [selectedTool, setSelectedTool] = useState<'draw' | 'erase'>('draw')
+
   const containerRef = useRef<HTMLDivElement>(null)
   const playIntervalRef = useRef<number | null>(null)
-  
-  // 计算可见音符范围
-  const startNote = octaveStart * 12 + 12 // C{octaveStart}
+
+  const startNote = octaveStart * 12 + 12
   const endNote = startNote + octaveCount * 12
   const visibleNotes = octaveCount * 12
-  
-  // 保存到历史记录
-  const saveToHistory = useCallback((newNotes: Note[]) => {
+
+  // 保存到历史
+  const saveHistory = useCallback((newNotes: MidiNote[]) => {
     const newHistory = history.slice(0, historyIndex + 1)
     newHistory.push(JSON.parse(JSON.stringify(newNotes)))
     setHistory(newHistory)
     setHistoryIndex(newHistory.length - 1)
   }, [history, historyIndex])
-  
-  // 撤销
-  const undo = useCallback(() => {
+
+  const undo = () => {
     if (historyIndex > 0) {
-      setHistoryIndex(historyIndex - 1)
-      setNotes(JSON.parse(JSON.stringify(history[historyIndex - 1])))
+      const idx = historyIndex - 1
+      setHistoryIndex(idx)
+      setNotes(JSON.parse(JSON.stringify(history[idx])))
     }
-  }, [history, historyIndex])
-  
-  // 重做
-  const redo = useCallback(() => {
+  }
+
+  const redo = () => {
     if (historyIndex < history.length - 1) {
-      setHistoryIndex(historyIndex + 1)
-      setNotes(JSON.parse(JSON.stringify(history[historyIndex + 1])))
+      const idx = historyIndex + 1
+      setHistoryIndex(idx)
+      setNotes(JSON.parse(JSON.stringify(history[idx])))
     }
-  }, [history, historyIndex])
-  
-  // 添加或更新音符
+  }
+
   const addNote = useCallback((pitch: number, start: number, duration: number = 1) => {
-    // 检查是否已存在相同位置的音符
+    let newNotes: MidiNote[]
     const existing = notes.find(n => n.pitch === pitch && n.start === start)
     if (existing) {
-      // 更新持续时间
-      const newNotes = notes.map(n => 
-        n.id === existing.id ? { ...n, duration } : n
-      )
-      setNotes(newNotes)
-      saveToHistory(newNotes)
-    } else {
-      const newNote: Note = {
-        id: `note-${Date.now()}-${Math.random()}`,
-        pitch,
-        start,
-        duration,
-        velocity: 100,
+      newNotes = notes.filter(n => n.id !== existing.id)
+      if (selectedTool === 'erase') {
+        setNotes(newNotes)
+        saveHistory(newNotes)
+        return
       }
-      const newNotes = [...notes, newNote]
-      setNotes(newNotes)
-      saveToHistory(newNotes)
+    } else {
+      newNotes = [...notes]
     }
-  }, [notes, saveToHistory])
-  
-  // 删除音符
-  const deleteNote = useCallback((id: string) => {
-    const newNotes = notes.filter(n => n.id !== id)
+
+    if (selectedTool === 'draw') {
+      newNotes = newNotes.filter(n => !(n.pitch === pitch && n.start === start))
+      newNotes.push({
+        id: `n-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        pitch, start, duration, velocity: 100,
+      })
+    }
+
     setNotes(newNotes)
-    saveToHistory(newNotes)
-  }, [notes, saveToHistory])
-  
-  // 清空所有音符
-  const clearAllNotes = useCallback(() => {
+    saveHistory(newNotes)
+  }, [notes, selectedTool, saveHistory])
+
+  const clearAll = () => {
     stopPlaying()
     setNotes([])
-    saveToHistory([])
-  }, [saveToHistory])
-  
-  // 播放单个音符
-  const playNote = useCallback((pitch: number, duration: number = 0.5) => {
-    const noteName = midiToNoteName(pitch)
-    moaTone.playNote(noteName, duration)
+    saveHistory([])
+  }
+
+  const playNote = useCallback((pitch: number, duration: number = 0.4) => {
+    moaTone.playNote(midiToNoteName(pitch), duration)
     setActiveKeys(prev => new Set(prev).add(pitch))
     setTimeout(() => {
       setActiveKeys(prev => {
@@ -135,41 +159,36 @@ export default function MidiRollEditor() {
       })
     }, duration * 1000)
   }, [])
-  
-  // 播放序列
-  const playSequence = useCallback(() => {
+
+  const startPlaying = () => {
     if (notes.length === 0) return
-    
     setIsPlaying(true)
-    const stepDuration = (60 / tempo) * 1000 / 4 // 每步的毫秒数（假设4步=1拍）
-    
-    // 按时间排序
+    const stepDuration = (60 / tempo) * 1000 / 2 // 每步 = 八分音符
+
     const sortedNotes = [...notes].sort((a, b) => a.start - b.start)
-    let noteIndex = 0
+    let noteIdx = 0
     let step = 0
-    const maxStep = Math.max(...notes.map(n => n.start + n.duration), timeLength)
-    
+    const maxStep = Math.max(...notes.map(n => n.start + n.duration), steps)
+
+    setCurrentStep(0)
+
     playIntervalRef.current = window.setInterval(() => {
       setCurrentStep(step)
-      
-      // 播放当前步的所有音符
-      while (noteIndex < sortedNotes.length && sortedNotes[noteIndex].start === step) {
-        const note = sortedNotes[noteIndex]
-        playNote(note.pitch, (note.duration * stepDuration) / 1000)
-        noteIndex++
+
+      while (noteIdx < sortedNotes.length && sortedNotes[noteIdx].start === step) {
+        const n = sortedNotes[noteIdx]
+        playNote(n.pitch, (n.duration * stepDuration) / 1000)
+        noteIdx++
       }
-      
+
       step++
-      
-      // 检查是否播放完毕
       if (step >= maxStep) {
         stopPlaying()
       }
     }, stepDuration)
-  }, [notes, tempo, timeLength, playNote])
-  
-  // 停止播放
-  const stopPlaying = useCallback(() => {
+  }
+
+  const stopPlaying = () => {
     if (playIntervalRef.current) {
       clearInterval(playIntervalRef.current)
       playIntervalRef.current = null
@@ -177,305 +196,307 @@ export default function MidiRollEditor() {
     setIsPlaying(false)
     setCurrentStep(-1)
     setActiveKeys(new Set())
-  }, [])
-  
-  // 处理鼠标按下（开始拖拽）
-  const handleMouseDown = (pitch: number, step: number, e: React.MouseEvent) => {
+  }
+
+  const loadPreset = (preset: typeof PRESETS[0]) => {
+    stopPlaying()
+    const newNotes: MidiNote[] = preset.notes.map((n, i) => ({
+      id: `preset-${i}`,
+      ...n,
+      velocity: 100,
+    }))
+    setNotes(newNotes)
+    saveHistory(newNotes)
+    setSteps(Math.max(16, Math.max(...newNotes.map(n => n.start + n.duration)) + 2))
+  }
+
+  const handleCellMouseDown = (pitch: number, step: number, e: React.MouseEvent) => {
     if (isPlaying) return
     e.preventDefault()
-    
-    // 检查是否点击了已有音符
-    const clickedNote = notes.find(n => 
-      n.pitch === pitch && n.start <= step && step < n.start + n.duration
-    )
-    
-    if (clickedNote) {
-      // 删除音符
-      deleteNote(clickedNote.id)
-    } else {
-      // 开始拖拽创建新音符
-      setIsDragging(true)
-      setDragStart({ pitch, step })
-      playNote(pitch, 0.2)
+
+    if (selectedTool === 'erase') {
+      const existing = notes.find(n => n.pitch === pitch && n.start === step)
+      if (existing) {
+        const newNotes = notes.filter(n => n.id !== existing.id)
+        setNotes(newNotes)
+        saveHistory(newNotes)
+      }
+      return
     }
+
+    setIsDragging(true)
+    setDragStart({ pitch, step })
+    setDragCurrent({ pitch, step })
+    playNote(pitch, 0.2)
   }
-  
-  // 处理鼠标移动
-  const handleMouseMove = (pitch: number, step: number) => {
+
+  const handleCellMouseEnter = (pitch: number, step: number) => {
     if (!isDragging || !dragStart) return
     if (pitch !== dragStart.pitch) return
-    
-    // 实时预览音符长度
-    const duration = Math.max(1, step - dragStart.step + 1)
-    // 这里可以添加预览效果
+    setDragCurrent({ pitch, step })
   }
-  
-  // 处理鼠标释放（结束拖拽）
-  const handleMouseUp = (pitch: number, step: number) => {
+
+  const handleCellMouseUp = (pitch: number, step: number) => {
     if (!isDragging || !dragStart) return
-    
-    const duration = Math.max(1, step - dragStart.step + 1)
-    addNote(dragStart.pitch, dragStart.step, duration)
-    
+    const start = Math.min(dragStart.step, step)
+    const end = Math.max(dragStart.step, step)
+    addNote(dragStart.pitch, start, end - start + 1)
     setIsDragging(false)
     setDragStart(null)
+    setDragCurrent(null)
   }
-  
-  // 键盘事件
+
+  // 全局 mouseup
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.metaKey) {
-        if (e.key === 'z') {
-          e.preventDefault()
-          if (e.shiftKey) {
-            redo()
-          } else {
-            undo()
-          }
-        }
+    const handler = () => {
+      if (isDragging && dragStart) {
+        addNote(dragStart.pitch, dragStart.step, 1)
+      }
+      setIsDragging(false)
+      setDragStart(null)
+      setDragCurrent(null)
+    }
+    window.addEventListener('mouseup', handler)
+    return () => window.removeEventListener('mouseup', handler)
+  }, [isDragging, dragStart, addNote])
+
+  // 键盘快捷键
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        e.preventDefault()
+        e.shiftKey ? redo() : undo()
+      }
+      if (e.key === ' ' && !e.repeat) {
+        e.preventDefault()
+        isPlaying ? stopPlaying() : startPlaying()
       }
     }
-    
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [undo, redo])
-  
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [isPlaying, notes, tempo, steps])
+
   // 清理
   useEffect(() => {
-    return () => {
-      if (playIntervalRef.current) {
-        clearInterval(playIntervalRef.current)
-      }
-    }
+    return () => { if (playIntervalRef.current) clearInterval(playIntervalRef.current) }
   }, [])
-  
+
+  const ROW_H = 22
+  const HEADER_H = 28
+  const KEYBOARD_W = 50
+
+  const dragPreview = isDragging && dragStart && dragCurrent
+    ? {
+        pitch: dragStart.pitch,
+        start: Math.min(dragStart.step, dragCurrent.step),
+        duration: Math.abs(dragCurrent.step - dragStart.step) + 1,
+      }
+    : null
+
   return (
-    <div className="max-w-7xl mx-auto p-4">
-      <Card>
-        <div className="text-center mb-4">
-          <h2 className="text-2xl font-bold">🎹 MIDI 钢琴卷帘编辑器</h2>
-          <p className="text-gray-500 mt-1">拖拽创建音符，点击删除音符</p>
-        </div>
-        
-        {/* 控制栏 */}
-        <div className="flex flex-wrap justify-between items-center mb-4 p-3 bg-gray-50 rounded-lg gap-2">
-          <Space wrap>
-            <Button
-              type="primary"
-              size="large"
-              icon={isPlaying ? <PauseCircleOutlined /> : <PlayCircleOutlined />}
-              onClick={isPlaying ? stopPlaying : playSequence}
-            >
-              {isPlaying ? '停止' : '播放'}
-            </Button>
-            <Button
-              icon={<UndoOutlined />}
-              onClick={undo}
-              disabled={historyIndex <= 0}
-            >
-              撤销
-            </Button>
-            <Button
-              icon={<RedoOutlined />}
-              onClick={redo}
-              disabled={historyIndex >= history.length - 1}
-            >
-              重做
-            </Button>
-            <Button
-              icon={<DeleteOutlined />}
-              onClick={clearAllNotes}
-              danger
-            >
-              清空
-            </Button>
-          </Space>
-          
-          <Space wrap>
-            <span className="text-sm">速度:</span>
-            <Slider
-              min={40}
-              max={240}
-              value={tempo}
-              onChange={setTempo}
-              style={{ width: 120 }}
-            />
-            <span className="text-sm">{tempo} BPM</span>
-            
-            <div className="w-px h-6 bg-gray-300 mx-2" />
-            
-            <span className="text-sm">长度:</span>
-            <Select
-              value={timeLength}
-              onChange={setTimeLength}
-              options={[8, 16, 32, 64].map(v => ({ value: v, label: `${v} 步` }))}
-              style={{ width: 80 }}
-            />
-            
-            <span className="text-sm">八度:</span>
-            <Select
-              value={octaveStart}
-              onChange={setOctaveStart}
-              options={[1, 2, 3, 4, 5].map(v => ({ value: v, label: `C${v}` }))}
-              style={{ width: 60 }}
-            />
-          </Space>
-        </div>
-        
-        {/* 钢琴卷帘区域 */}
-        <div 
-          ref={containerRef}
-          className="relative border border-gray-300 rounded-lg overflow-hidden select-none"
-          style={{ height: visibleNotes * 20 + 30 }}
-          onMouseUp={() => {
-            setIsDragging(false)
-            setDragStart(null)
-          }}
-          onMouseLeave={() => {
-            setIsDragging(false)
-            setDragStart(null)
-          }}
-        >
-          {/* 左侧钢琴键盘 */}
-          <div className="absolute left-0 top-[30px] bottom-0 w-14 bg-gray-100 border-r border-gray-300 z-10">
-            {Array.from({ length: visibleNotes }).map((_, i) => {
-              const noteNum = endNote - i - 1
-              const noteName = NOTE_NAMES[noteNum % 12]
-              const isBlack = noteName.includes('#')
-              const isActive = activeKeys.has(noteNum)
-              
-              return (
-                <div
-                  key={noteNum}
-                  className={`h-5 flex items-center justify-end pr-1 text-xs cursor-pointer transition-colors ${
-                    isBlack ? 'bg-gray-800 text-white' : 'bg-white border-b border-gray-200'
-                  } ${isActive ? 'bg-blue-500 text-white' : ''}`}
-                  onMouseDown={() => playNote(noteNum, 0.5)}
-                >
-                  {noteName}
-                </div>
-              )
-            })}
-          </div>
-          
-          {/* 时间轴 */}
-          <div className="absolute left-14 right-0 top-0 h-[30px] bg-gray-50 border-b border-gray-300 flex z-10">
-            {Array.from({ length: timeLength }).map((_, i) => (
-              <div
-                key={i}
-                className={`flex-1 flex items-center justify-center text-xs border-r border-gray-200 ${
-                  currentStep === i ? 'bg-blue-200' : ''
-                } ${i % 4 === 0 ? 'font-bold' : ''}`}
+    <div className="max-w-full mx-auto p-4 md:p-6">
+      <div className="text-center mb-4">
+        <Title level={2} style={{ marginBottom: 4 }}>🎹 MIDI 钢琴卷帘</Title>
+        <Text type="secondary">拖拽绘制音符，空格键播放，点击钢琴键试听</Text>
+      </div>
+
+      {/* 控制栏 */}
+      <Card className="mb-4" size="small">
+        <Row gutter={[12, 8]} align="middle">
+          <Col>
+            <Space>
+              <Button type="primary" size="large"
+                icon={isPlaying ? <PauseCircleOutlined /> : <PlayCircleOutlined />}
+                onClick={isPlaying ? stopPlaying : startPlaying}
               >
-                {i % 4 === 0 ? Math.floor(i / 4) + 1 : ''}
-              </div>
+                {isPlaying ? '停止' : '播放'}
+              </Button>
+              <Button icon={<UndoOutlined />} onClick={undo} disabled={historyIndex <= 0}>撤销</Button>
+              <Button icon={<RedoOutlined />} onClick={redo} disabled={historyIndex >= history.length - 1}>重做</Button>
+              <Button icon={<DeleteOutlined />} onClick={clearAll} danger>清空</Button>
+            </Space>
+          </Col>
+          <Col flex="auto">
+            <Space wrap>
+              <span className="text-xs text-gray-500">工具:</span>
+              <Button size="small" type={selectedTool === 'draw' ? 'primary' : 'default'}
+                onClick={() => setSelectedTool('draw')}>✏️ 绘制</Button>
+              <Button size="small" type={selectedTool === 'erase' ? 'primary' : 'default'}
+                onClick={() => setSelectedTool('erase')}>🧹 擦除</Button>
+              <span className="text-xs text-gray-500 ml-2">速度:</span>
+              <Slider min={40} max={240} value={tempo} onChange={setTempo} style={{ width: 100 }} />
+              <span className="text-xs">{tempo} BPM</span>
+              <span className="text-xs text-gray-500 ml-2">长度:</span>
+              <Select size="small" value={steps} onChange={setSteps}
+                options={[8, 16, 32, 48, 64].map(v => ({ value: v, label: `${v} 步` }))} style={{ width: 75 }} />
+              <span className="text-xs text-gray-500 ml-2">八度:</span>
+              <Select size="small" value={octaveStart} onChange={setOctaveStart}
+                options={[1, 2, 3, 4, 5].map(v => ({ value: v, label: `C${v}` }))} style={{ width: 60 }} />
+            </Space>
+          </Col>
+        </Row>
+
+        {/* 预设 */}
+        <div className="mt-2">
+          <Space wrap size={[4, 4]}>
+            <Text type="secondary" className="text-xs">预设:</Text>
+            {PRESETS.map((p, i) => (
+              <Button key={i} size="small" onClick={() => loadPreset(p)}>{p.name}</Button>
             ))}
-          </div>
-          
-          {/* 网格区域 */}
-          <div className="absolute left-14 right-0 top-[30px] bottom-0">
-            {Array.from({ length: visibleNotes }).map((_, rowIndex) => {
-              const noteNum = endNote - rowIndex - 1
-              const noteName = NOTE_NAMES[noteNum % 12]
-              const isBlack = noteName.includes('#')
-              
-              return (
-                <div
-                  key={noteNum}
-                  className={`flex h-5 ${isBlack ? 'bg-gray-100' : 'bg-white'}`}
+          </Space>
+        </div>
+      </Card>
+
+      {/* 卷帘区域 */}
+      <Card size="small" bodyStyle={{ padding: 0 }}>
+        <div className="overflow-x-auto">
+          <div className="min-w-[500px]" style={{ height: visibleNotes * ROW_H + HEADER_H + 4 }}>
+            {/* 时间轴 */}
+            <div className="flex sticky top-0 z-20 bg-gray-50 dark:bg-gray-800 border-b" style={{ height: HEADER_H, marginLeft: KEYBOARD_W }}>
+              {Array.from({ length: steps }).map((_, i) => (
+                <div key={i}
+                  className={`flex-1 flex items-center justify-center text-xs border-r border-gray-200
+                    ${currentStep === i ? 'bg-blue-200 dark:bg-blue-800' : ''}
+                    ${i % 4 === 0 ? 'font-bold' : ''}`}
                 >
-                  {Array.from({ length: timeLength }).map((_, step) => (
-                    <div
-                      key={step}
-                      className={`flex-1 border-r border-b border-gray-100 cursor-crosshair transition-colors ${
-                        currentStep === step ? 'bg-blue-100' : ''
-                      } ${step % 4 === 0 ? 'border-l-2 border-l-gray-300' : ''}`}
-                      onMouseDown={(e) => handleMouseDown(noteNum, step, e)}
-                      onMouseMove={() => handleMouseMove(noteNum, step)}
-                      onMouseUp={() => handleMouseUp(noteNum, step)}
-                    />
-                  ))}
+                  {i % 4 === 0 ? i / 4 + 1 : ''}
                 </div>
-              )
-            })}
-            
-            {/* 音符显示层 */}
-            <div className="absolute inset-0 pointer-events-none">
-              {notes.map(note => {
-                const rowIndex = endNote - note.pitch - 1
-                if (rowIndex < 0 || rowIndex >= visibleNotes) return null
-                
-                const stepWidth = 100 / timeLength
-                const rowHeight = 20
-                
-                return (
-                  <div
-                    key={note.id}
-                    className={`absolute rounded-sm transition-all ${
-                      activeKeys.has(note.pitch) ? 'bg-blue-600' : 'bg-blue-500'
-                    }`}
-                    style={{
-                      left: `${note.start * stepWidth}%`,
-                      top: `${rowIndex * rowHeight}px`,
-                      width: `${note.duration * stepWidth}%`,
-                      height: `${rowHeight - 2}px`,
-                    }}
-                  >
-                    <div className="h-full flex items-center justify-center text-white text-xs overflow-hidden">
-                      {note.duration >= 2 ? midiToNoteName(note.pitch) : ''}
-                    </div>
-                  </div>
-                )
-              })}
-              
-              {/* 拖拽预览 */}
-              {isDragging && dragStart && (
-                <div
-                  className="absolute rounded-sm bg-blue-400 opacity-50"
-                  style={{
-                    left: `${dragStart.step * (100 / timeLength)}%`,
-                    top: `${(endNote - dragStart.pitch - 1) * 20}px`,
-                    width: `${1 * (100 / timeLength)}%`,
-                    height: '18px',
-                  }}
-                />
-              )}
+              ))}
             </div>
-            
-            {/* 播放指示线 */}
-            {currentStep >= 0 && (
-              <div
-                className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-20 pointer-events-none"
-                style={{ left: `${(currentStep + 0.5) * (100 / timeLength)}%` }}
-              />
-            )}
-          </div>
-        </div>
-        
-        {/* 统计信息 */}
-        <div className="mt-4 p-3 bg-gray-50 rounded-lg flex justify-between items-center">
-          <div className="text-sm text-gray-600">
-            音符数量: <span className="font-medium">{notes.length}</span>
-          </div>
-          <div className="text-sm text-gray-600">
-            总时长: <span className="font-medium">{Math.ceil(timeLength / 4)} 拍</span>
-          </div>
-          <div className="text-sm text-gray-600">
-            八度范围: <span className="font-medium">C{octaveStart} - B{octaveStart + octaveCount - 1}</span>
-          </div>
-        </div>
-        
-        {/* 操作提示 */}
-        <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-          <h4 className="font-medium mb-2">💡 使用提示</h4>
-          <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
-            <div>• 拖拽网格创建音符</div>
-            <div>• 点击音符删除</div>
-            <div>• 点击左侧键盘试听</div>
-            <div>• Ctrl+Z 撤销 / Ctrl+Shift+Z 重做</div>
+
+            {/* 网格 + 键盘 */}
+            <div className="flex">
+              {/* 钢琴键盘 */}
+              <div className="shrink-0 bg-gray-100 dark:bg-gray-800 border-r" style={{ width: KEYBOARD_W }}>
+                {Array.from({ length: visibleNotes }).map((_, i) => {
+                  const noteNum = endNote - i - 1
+                  const isBlack = NOTE_NAMES[noteNum % 12].includes('#')
+                  const isActive = activeKeys.has(noteNum)
+                  return (
+                    <button key={noteNum}
+                      onMouseDown={(e) => { e.preventDefault(); playNote(noteNum, 0.5) }}
+                      className={`w-full flex items-center justify-end pr-1 text-xs cursor-pointer border-b border-gray-200
+                        ${isBlack ? 'bg-gray-700 text-white' : 'bg-white dark:bg-gray-900'}
+                        ${isActive ? '!bg-blue-500 !text-white' : ''}`}
+                      style={{ height: ROW_H }}
+                    >
+                      {NOTE_NAMES[noteNum % 12]}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* 网格区域 */}
+              <div className="flex-1 relative" ref={containerRef}
+                onMouseLeave={() => { setIsDragging(false); setDragStart(null); setDragCurrent(null) }}
+              >
+                {/* 背景网格 */}
+                {Array.from({ length: visibleNotes }).map((_, rowIdx) => {
+                  const noteNum = endNote - rowIdx - 1
+                  const isBlack = NOTE_NAMES[noteNum % 12].includes('#')
+                  return (
+                    <div key={noteNum} className="flex" style={{ height: ROW_H }}>
+                      {Array.from({ length: steps }).map((_, step) => (
+                        <div key={step}
+                          className={`flex-1 border-r border-b border-gray-100 dark:border-gray-800
+                            ${isBlack ? 'bg-gray-50 dark:bg-gray-900' : 'bg-white dark:bg-gray-950'}
+                            ${step % 4 === 0 ? 'border-l-2 border-l-gray-300 dark:border-l-gray-600' : ''}
+                            ${currentStep === step ? 'bg-blue-50 dark:bg-blue-900/30' : ''}
+                            cursor-crosshair hover:bg-blue-50 dark:hover:bg-blue-900/20`}
+                          onMouseDown={(e) => handleCellMouseDown(noteNum, step, e)}
+                          onMouseEnter={() => handleCellMouseEnter(noteNum, step)}
+                          onMouseUp={() => handleCellMouseUp(noteNum, step)}
+                        />
+                      ))}
+                    </div>
+                  )
+                })}
+
+                {/* 音符层 */}
+                {notes.map(note => {
+                  const rowIdx = endNote - note.pitch - 1
+                  if (rowIdx < 0 || rowIdx >= visibleNotes) return null
+                  const stepW = `${100 / steps}%`
+                  const color = COLORS[(note.pitch - startNote) % COLORS.length]
+
+                  return (
+                    <div key={note.id}
+                      className={`absolute rounded-sm cursor-pointer transition-colors hover:brightness-110
+                        ${activeKeys.has(note.pitch) ? 'ring-2 ring-white' : ''}`}
+                      style={{
+                        left: `${(note.start / steps) * 100}%`,
+                        top: rowIdx * ROW_H + 1,
+                        width: `${(note.duration / steps) * 100}%`,
+                        height: ROW_H - 2,
+                        backgroundColor: color,
+                        minWidth: 4,
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (selectedTool === 'erase') {
+                          const newNotes = notes.filter(n => n.id !== note.id)
+                          setNotes(newNotes)
+                          saveHistory(newNotes)
+                        } else {
+                          playNote(note.pitch, 0.3)
+                        }
+                      }}
+                    >
+                      {note.duration >= steps * 0.04 && (
+                        <span className="text-white text-xs px-1 truncate block leading-tight" style={{ lineHeight: `${ROW_H - 2}px` }}>
+                          {midiToNoteName(note.pitch)}
+                        </span>
+                      )}
+                    </div>
+                  )
+                })}
+
+                {/* 拖拽预览 */}
+                {dragPreview && (
+                  <div className="absolute rounded-sm bg-blue-400/50 border border-blue-500 pointer-events-none"
+                    style={{
+                      left: `${(dragPreview.start / steps) * 100}%`,
+                      top: (endNote - dragPreview.pitch - 1) * ROW_H + 1,
+                      width: `${(dragPreview.duration / steps) * 100}%`,
+                      height: ROW_H - 2,
+                    }}
+                  />
+                )}
+
+                {/* 播放线 */}
+                {currentStep >= 0 && (
+                  <div className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-30 pointer-events-none"
+                    style={{ left: `${((currentStep + 0.5) / steps) * 100}%` }}
+                  />
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </Card>
+
+      {/* 底部信息 */}
+      <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg flex flex-wrap justify-between items-center text-sm text-gray-600 dark:text-gray-400">
+        <span>音符数: <strong>{notes.length}</strong></span>
+        <span>总步数: <strong>{steps}</strong> ({(steps / 4).toFixed(1)} 拍)</span>
+        <span>八度: <strong>C{octaveStart} - B{octaveStart + octaveCount - 1}</strong></span>
+        <span>BPM: <strong>{tempo}</strong></span>
+      </div>
+
+      {/* 快捷键提示 */}
+      <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+        <Text strong className="text-sm">💡 快捷键：</Text>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-1 text-xs text-gray-600 dark:text-gray-400">
+          <span>空格键 — 播放/停止</span>
+          <span>Ctrl+Z — 撤销</span>
+          <span>Ctrl+Shift+Z — 重做</span>
+          <span>拖拽 — 绘制音符</span>
+          <span>点击已有音符 — 试听</span>
+          <span>切换擦除工具 — 点击删除</span>
+          <span>点击左侧钢琴 — 试听</span>
+          <span>选择预设 — 快速加载</span>
+        </div>
+      </div>
     </div>
   )
 }
