@@ -1,19 +1,15 @@
-/* note.module.scss - 音符样式 - 黑白钢琴风 */
-
-$piano-black: #1a1a1a;
-$piano-white: #f8f5f0;
-$gold-accent: #c9a96e;
+/* note.module.scss — 音符样式 · MiniMax 风格（亮暗双主题） */
 
 .note {
   display: inline-flex;
   align-items: center;
   padding: 0.15em 0.5em;
   margin: 0 0.15em;
-  background: $piano-black;
-  color: $piano-white;
-  border: 1px solid $piano-black;
-  border-radius: 2px;
-  font-family: 'Georgia', 'Times New Roman', serif;
+  background: var(--brand-blue);
+  color: #fff;
+  border: 1px solid var(--brand-blue);
+  border-radius: var(--radius-standard);
+  font-family: var(--font-data);
   font-weight: 500;
   font-size: 0.9em;
   cursor: pointer;
@@ -23,20 +19,21 @@ $gold-accent: #c9a96e;
 
   &:hover {
     transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-    border-color: $gold-accent;
+    box-shadow: var(--shadow-brand);
+    border-color: var(--brand-blue);
+    opacity: 0.94;
   }
 
   &--selected {
-    border-color: $gold-accent;
-    box-shadow: 0 0 0 1px $gold-accent;
+    border-color: var(--brand-pink);
+    box-shadow: 0 0 0 1px var(--brand-pink);
   }
 
   &--playing {
     animation: notePlay 0.5s ease;
 
     .playIcon {
-      color: $gold-accent;
+      color: #fff;
     }
   }
 }
@@ -48,11 +45,11 @@ $gold-accent: #c9a96e;
   width: 16px;
   height: 16px;
   margin-right: 3px;
-  color: rgba($piano-white, 0.5);
+  color: rgba(255, 255, 255, 0.7);
   transition: color 0.2s ease;
 
   &:hover {
-    color: $gold-accent;
+    color: #fff;
   }
 
   svg {
@@ -70,19 +67,19 @@ $gold-accent: #c9a96e;
 
 .input {
   width: 3em;
-  padding: 0.1em 0.2em;
-  border: 1px solid $gold-accent;
-  border-radius: 2px;
-  font-family: inherit;
+  padding: 0.1em 0.25em;
+  border: 1px solid var(--brand-blue);
+  border-radius: var(--radius-tag);
+  font-family: var(--font-data);
   font-size: inherit;
   text-align: center;
   outline: none;
-  background: $piano-white;
-  color: $piano-black;
+  background: var(--bg-primary);
+  color: var(--text-primary);
 
   &:focus {
-    border-color: $piano-black;
-    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+    border-color: var(--brand-blue);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-blue) 25%, transparent);
   }
 }
 
@@ -92,8 +89,8 @@ $gold-accent: #c9a96e;
   }
   40% {
     transform: scale(1.12);
-    background: $gold-accent;
-    border-color: $gold-accent;
+    background: var(--brand-pink);
+    border-color: var(--brand-pink);
   }
   100% {
     transform: scale(1);

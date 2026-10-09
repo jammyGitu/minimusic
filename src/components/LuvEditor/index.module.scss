@@ -1,22 +1,15 @@
-/* index.module.scss - 编辑器主样式 - 黑白钢琴风 */
-
-$text-primary: #1a1a1a;
-$text-secondary: #555;
-$text-muted: #999;
-$border-color: rgba(0, 0, 0, 0.08);
-$gold-accent: #c9a96e;
-$selection-bg: rgba(0, 0, 0, 0.08);
+/* index.module.scss — 编辑器主样式 · MiniMax 风格（亮暗双主题） */
 
 .editor {
   min-height: 400px;
-  padding: 1.5rem 0;
-  font-size: 0.95rem;
-  line-height: 1.85;
-  color: $text-primary;
+  padding: 24px 0;
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--text-primary);
   outline: none;
   position: relative;
   z-index: 1;
-  font-family: 'Georgia', 'Times New Roman', 'Noto Serif SC', serif;
 
   &:focus {
     outline: none;
@@ -24,102 +17,103 @@ $selection-bg: rgba(0, 0, 0, 0.08);
 
   // 空段落占位符
   [data-slate-placeholder] {
-    color: $text-muted;
+    color: var(--text-muted);
     opacity: 0.6;
     font-style: italic;
   }
 
   // 段落样式
   p {
-    margin: 0.5rem 0;
-    color: $text-primary;
+    margin: 8px 0;
+    color: var(--text-primary);
   }
 
   // 列表样式
   ul, ol {
-    margin: 0.5rem 0;
-    padding-left: 1.5rem;
-    color: $text-primary;
+    margin: 8px 0;
+    padding-left: 24px;
+    color: var(--text-primary);
   }
 
   li {
-    margin: 0.2rem 0;
+    margin: 3px 0;
   }
 
   // 引用样式
   blockquote {
-    margin: 1rem 0;
-    padding: 1rem 1.25rem;
-    border-left: 3px solid $text-primary;
-    background: rgba(0, 0, 0, 0.02);
+    margin: 16px 0;
+    padding: 16px 20px;
+    border-left: 3px solid var(--brand-blue);
+    background: color-mix(in srgb, var(--brand-blue) 5%, transparent);
+    border-radius: 0 var(--radius-comfortable) var(--radius-comfortable) 0;
     font-style: italic;
-    color: $text-secondary;
-    font-size: 0.95rem;
+    color: var(--text-secondary);
+    font-size: 15px;
   }
 
   // 代码样式
   pre {
-    margin: 1rem 0;
-    padding: 1.25rem;
-    background: #fafafa;
-    border: 1px solid $border-color;
-    border-radius: 2px;
+    margin: 16px 0;
+    padding: 20px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-comfortable);
     overflow-x: auto;
 
     code {
       font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
-      font-size: 0.82rem;
-      color: $text-primary;
+      font-size: 13px;
+      color: var(--text-primary);
     }
   }
 
   code {
     padding: 0.15em 0.4em;
-    background: rgba(0, 0, 0, 0.04);
-    border-radius: 2px;
+    background: color-mix(in srgb, var(--brand-blue) 8%, transparent);
+    border-radius: var(--radius-tag);
     font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
     font-size: 0.88em;
-    color: $text-primary;
+    color: var(--brand-blue);
   }
 
   // 链接样式
   a {
-    color: $text-primary;
+    color: var(--brand-blue);
     text-decoration: none;
-    border-bottom: 1px solid $gold-accent;
+    border-bottom: 1px solid color-mix(in srgb, var(--brand-blue) 40%, transparent);
     cursor: pointer;
     transition: border-color 0.2s ease;
 
     &:hover {
-      border-bottom-color: $text-primary;
+      border-bottom-color: var(--brand-blue);
     }
   }
 
   // 选中样式
   ::selection {
-    background: $selection-bg;
-    color: $text-primary;
+    background: color-mix(in srgb, var(--brand-blue) 22%, transparent);
+    color: var(--text-primary);
   }
 
   // 标题样式
   h1, h2 {
-    font-family: 'Georgia', 'Times New Roman', 'Noto Serif SC', serif;
+    font-family: var(--font-display);
     font-weight: 600;
-    color: $text-primary;
+    color: var(--text-heading);
     letter-spacing: -0.01em;
   }
 
   h1 {
-    font-size: 1.75rem;
-    margin: 1.5rem 0 0.75rem;
+    font-size: 28px;
+    margin: 24px 0 12px;
     line-height: 1.3;
-    border-bottom: 1px solid $border-color;
-    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-light);
+    padding-bottom: 8px;
   }
 
   h2 {
-    font-size: 1.3rem;
-    margin: 1.25rem 0 0.5rem;
+    font-size: 21px;
+    margin: 20px 0 8px;
     line-height: 1.4;
   }
 }

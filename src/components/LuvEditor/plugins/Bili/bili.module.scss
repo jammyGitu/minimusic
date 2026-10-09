@@ -1,46 +1,41 @@
-/* bili.module.scss - B站视频块样式 - 黑白钢琴风 */
-
-$piano-black: #1a1a1a;
-$piano-white: #f8f5f0;
-$gold-accent: #c9a96e;
-$slate-400: #999;
-$slate-200: #e5e3de;
-$border-color: rgba(0, 0, 0, 0.08);
+/* bili.module.scss — B站视频块样式 · MiniMax 风格（亮暗双主题） */
 
 .inputContainer {
-  padding: 1.5rem;
-  background: $piano-white;
-  border: 2px dashed $border-color;
-  border-radius: 2px;
+  padding: 24px;
+  background: var(--bg-tertiary);
+  border: 2px dashed var(--border-gray);
+  border-radius: var(--radius-comfortable);
   text-align: center;
 }
 
 .biliIcon {
   display: flex;
   justify-content: center;
-  margin-bottom: 1rem;
-  color: $slate-400;
-  opacity: 0.6;
+  margin-bottom: 16px;
+  color: var(--brand-pink);
+  opacity: 0.8;
 }
 
 .input {
-  margin-bottom: 1rem;
-  border-radius: 2px;
-  font-size: 0.88rem;
+  margin-bottom: 16px;
+  border-radius: var(--radius-standard);
+  font-size: 14px;
 }
 
 .submitBtn {
-  border-radius: 2px;
-  font-size: 0.82rem;
+  border-radius: var(--radius-standard);
+  font-family: var(--font-ui);
+  font-size: 14px;
   font-weight: 500;
-  background: $piano-black;
-  border-color: $piano-black;
-  color: $piano-white;
-  letter-spacing: 0.02em;
+  background: var(--brand-blue);
+  border-color: var(--brand-blue);
+  color: #fff;
+  letter-spacing: 0.01em;
 
   &:hover {
-    background: #3a3a3a !important;
-    border-color: #3a3a3a !important;
+    background: var(--primary-600) !important;
+    border-color: var(--primary-600) !important;
+    color: #fff;
   }
 }
 
@@ -48,10 +43,10 @@ $border-color: rgba(0, 0, 0, 0.08);
   position: relative;
   width: 100%;
   padding-bottom: 56.25%;
-  background: $piano-black;
-  border-radius: 2px;
+  background: var(--surface-dark);
+  border-radius: var(--radius-comfortable);
   overflow: hidden;
-  border: 1px solid $border-color;
+  border: 1px solid var(--border-light);
 }
 
 .iframe {

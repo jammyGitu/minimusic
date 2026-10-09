@@ -2,7 +2,7 @@
 
 import React, { useState, Suspense, useEffect } from 'react'
 import dynamic from 'next/dynamic'
-import { Card, Button, Switch, message, Spin } from 'antd'
+import { Button, Switch, message, Spin } from 'antd'
 import { SaveOutlined } from '@ant-design/icons'
 import { MODE } from '@/components/LuvEditor/types'
 import styles from './editor.module.scss'
@@ -60,7 +60,7 @@ export default function EditorPage() {
 
   return (
     <div className={styles.container}>
-      <Card className={styles.card} styles={{ body: { padding: 0 } }}>
+      <div className={styles.card}>
         {/* 头部 */}
         <div className={styles.header}>
           <div className={styles.title}>
@@ -143,7 +143,7 @@ export default function EditorPage() {
           </span>
           <span>{content.length} 个块</span>
         </div>
-      </Card>
+      </div>
     </div>
   )
 }

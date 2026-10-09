@@ -12,8 +12,8 @@ async function loadTone(): Promise<any> {
   
   try {
     // 在客户端环境中，使用动态导入
-    const toneModule = await import('tone')
-    
+    const toneModule: any = await import('tone')
+
     // Tone.js 14.x 版本的导出结构可能需要特殊处理
     // 检查模块是否具有我们需要的构造函数
     if (toneModule.default) {
