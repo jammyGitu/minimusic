@@ -1,21 +1,43 @@
 'use client'
 
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { Card, Button, Progress, message, Space, Typography, Segmented, Switch, Tag } from 'antd'
-import { ReloadOutlined, SoundOutlined, FireOutlined, ClockCircleOutlined } from '@ant-design/icons'
+import { Progress, message, Switch } from 'antd'
+import {
+  ReloadOutlined,
+  SoundOutlined,
+  FireOutlined,
+  ClockCircleOutlined,
+} from '@ant-design/icons'
 import { moaTone } from '@/utils/MoaTone'
 import { CHORD_TYPES, buildChord, ChordType } from '@/utils/chord'
 import { addPracticeRecord } from '@/stores/progress'
-
-const { Title, Text } = Typography
+import styles from './practice.module.scss'
 
 type Difficulty = 'easy' | 'medium' | 'hard'
 
 const DIFFICULTY_CHORDS: Record<Difficulty, string[]> = {
   easy: ['maj', 'min'],
   medium: ['maj', 'min', 'aug', 'dim', 'maj7', 'min7', 'dom7'],
-  hard: ['maj', 'min', 'aug', 'dim', 'maj7', 'min7', 'dom7', 'dim7', 'halfDim7', 'sus2', 'sus4'],
+  hard: [
+    'maj',
+    'min',
+    'aug',
+    'dim',
+    'maj7',
+    'min7',
+    'dom7',
+    'dim7',
+    'halfDim7',
+    'sus2',
+    'sus4',
+  ],
 }
+
+const DIFFICULTY_LABELS: { label: string; value: Difficulty }[] = [
+  { label: '初级', value: 'easy' },
+  { label: '中级', value: 'medium' },
+  { label: '高级', value: 'hard' },
+]
 
 export default function HarmonyPractice() {
   const [pass, setPass] = useState(0)
@@ -40,7 +62,9 @@ export default function HarmonyPractice() {
   const generateQuestion = useCallback(() => {
     const noteNames = ['C', 'D', 'E', 'F', 'G', 'A', 'B']
     const octaves = [3, 4]
-    const r = `${noteNames[Math.floor(Math.random() * noteNames.length)]}${octaves[Math.floor(Math.random() * octaves.length)]}`
+    const r = `${noteNames[Math.floor(Math.random() * noteNames.length)]}${
+      octaves[Math.floor(Math.random() * octaves.length)]
+    }`
     const typeKey = chordKeys[Math.floor(Math.random() * chordKeys.length)]
     const ct = CHORD_TYPES[typeKey]
     const chordNotes = buildChord(r, ct)
@@ -70,35 +94,38 @@ export default function HarmonyPractice() {
     }
   }, [])
 
-  const handleAnswer = useCallback((ct: ChordType) => {
-    if (selectedAnswer) return
-    if (timerRef.current) clearInterval(timerRef.current)
+  const handleAnswer = useCallback(
+    (ct: ChordType) => {
+      if (selectedAnswer) return
+      if (timerRef.current) clearInterval(timerRef.current)
 
-    setSelectedAnswer(ct.name)
-    const isCorrect = ct.name === chordType.name
-    setFeedback(isCorrect ? 'correct' : 'wrong')
+      setSelectedAnswer(ct.name)
+      const isCorrect = ct.name === chordType.name
+      setFeedback(isCorrect ? 'correct' : 'wrong')
 
-    if (isCorrect) {
-      const newCombo = combo + 1
-      setCombo(newCombo)
-      setPass(p => p + 1)
-      setAll(a => a + 1)
-      playFeedbackSound(true)
-      if (newCombo >= 5 && newCombo % 5 === 0) {
-        message.success(`🔥 ${newCombo}连击！太棒了！`)
+      if (isCorrect) {
+        const newCombo = combo + 1
+        setCombo(newCombo)
+        setPass(p => p + 1)
+        setAll(a => a + 1)
+        playFeedbackSound(true)
+        if (newCombo >= 5 && newCombo % 5 === 0) {
+          message.success(`🔥 ${newCombo}连击！太棒了！`)
+        } else {
+          message.success('回答正确！')
+        }
+        setTimeout(generateQuestion, 800)
       } else {
-        message.success('回答正确！')
+        setCombo(0)
+        setAll(a => a + 1)
+        playFeedbackSound(false)
+        message.error(`回答错误，正确答案是：${chordType.name}`)
       }
-      setTimeout(generateQuestion, 800)
-    } else {
-      setCombo(0)
-      setAll(a => a + 1)
-      playFeedbackSound(false)
-      message.error(`回答错误，正确答案是：${chordType.name}`)
-    }
 
-    addPracticeRecord('harmony', isCorrect ? 1 : 0, 1)
-  }, [selectedAnswer, chordType, combo, generateQuestion, playFeedbackSound])
+      addPracticeRecord('harmony', isCorrect ? 1 : 0, 1)
+    },
+    [selectedAnswer, chordType, combo, generateQuestion, playFeedbackSound]
+  )
 
   useEffect(() => {
     if (timerOn && !selectedAnswer && timeLeft > 0) {
@@ -112,14 +139,22 @@ export default function HarmonyPractice() {
       message.error(`时间到！正确答案是：${chordType.name}`)
       addPracticeRecord('harmony', 0, 1)
     }
-    return () => { if (timerRef.current) clearTimeout(timerRef.current) }
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current)
+    }
   }, [timerOn, timeLeft, selectedAnswer, chordType, playFeedbackSound])
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
-      if (e.code === 'Space') { e.preventDefault(); playQuestion() }
-      if (e.code === 'ArrowRight') { e.preventDefault(); generateQuestion() }
+      if (e.code === 'Space') {
+        e.preventDefault()
+        playQuestion()
+      }
+      if (e.code === 'ArrowRight') {
+        e.preventDefault()
+        generateQuestion()
+      }
       const num = parseInt(e.key)
       if (num >= 1 && num <= Math.min(9, chordOptions.length)) {
         e.preventDefault()
@@ -138,86 +173,132 @@ export default function HarmonyPractice() {
   }, [generateQuestion])
 
   const accuracy = all > 0 ? Math.round((pass / all) * 100) : 0
+  const gridCols = chordOptions.length > 6 ? styles.optionsGrid3 : styles.optionsGrid2
 
   return (
-    <div className="max-w-4xl mx-auto p-4 md:p-6">
-      <Card className={feedback === 'correct' ? 'ring-2 ring-green-400' : feedback === 'wrong' ? 'ring-2 ring-red-400' : ''}
-        style={{ transition: 'box-shadow 0.3s' }}>
-        <div className="text-center mb-4">
-          <Title level={2} className="!mb-1">和弦辨认练习</Title>
-          <Text type="secondary">听和弦，判断和弦类型</Text>
-        </div>
-
-        <div className="flex flex-wrap justify-center items-center gap-3 mb-4">
-          <Segmented value={difficulty} onChange={(v) => { setDifficulty(v as Difficulty); setTimeout(generateQuestion, 0) }}
-            options={[{ label: '初级', value: 'easy' }, { label: '中级', value: 'medium' }, { label: '高级', value: 'hard' }]} />
-          <Space>
-            <ClockCircleOutlined />
-            <Switch checked={timerOn} onChange={setTimerOn} size="small" />
-            <Text type="secondary" className="text-xs">倒计时</Text>
-          </Space>
-          {timerOn && !selectedAnswer && <Tag color={timeLeft <= 3 ? 'red' : 'blue'}>{timeLeft}s</Tag>}
-        </div>
-
-        <div className="mb-4">
-          <div className="flex flex-wrap justify-center items-center gap-3">
-            <Tag color="green">✓ {pass}</Tag>
-            <Tag color="default">共 {all}</Tag>
-            <Tag color="blue">{accuracy}%</Tag>
-            {combo >= 2 && <Tag color="orange" icon={<FireOutlined />}>{combo}连击</Tag>}
+    <div className={styles.page}>
+      <div
+        className={`${styles.card} ${
+          feedback === 'correct'
+            ? styles.cardCorrect
+            : feedback === 'wrong'
+            ? styles.cardWrong
+            : ''
+        }`}
+      >
+        <div className={styles.cardInner}>
+          <div className={styles.head}>
+            <h2 className={styles.title}>和弦辨认练习</h2>
+            <p className={styles.subtitle}>听和弦，判断和弦类型</p>
           </div>
-          <Progress percent={accuracy} showInfo={false} className="mt-2" size="small"
-            strokeColor={{ '0%': '#1677ff', '100%': '#52c41a' }} />
-        </div>
 
-        <div className="text-center mb-5">
-          <Button type="primary" size="large" icon={<SoundOutlined />}
-            onClick={playQuestion} loading={isPlaying}>
-            播放和弦 <Tag className="ml-2" color="default">Space</Tag>
-          </Button>
-          <Button size="large" icon={<ReloadOutlined />} onClick={generateQuestion} className="ml-3">
-            下一题 <Tag className="ml-1" color="default">→</Tag>
-          </Button>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
-          {chordOptions.map((ct, idx) => {
-            const isSelected = selectedAnswer === ct.name
-            const isCorrectAnswer = ct.name === chordType.name
-            let btnType: 'default' | 'primary' = 'default'
-            let btnDanger = false
-            if (isSelected && isCorrectAnswer) btnType = 'primary'
-            else if (isSelected && !isCorrectAnswer) btnDanger = true
-            else if (selectedAnswer && isCorrectAnswer) btnType = 'primary'
-
-            return (
-              <Button key={ct.name} size="large"
-                onClick={() => handleAnswer(ct)} disabled={!!selectedAnswer}
-                type={btnType} danger={btnDanger} className="text-sm">
-                <span className="font-medium mr-1 text-gray-400">{idx + 1}</span>
-                {ct.name}
-                {ct.symbol && <Text type="secondary" className="text-xs ml-1">({ct.symbol})</Text>}
-              </Button>
-            )
-          })}
-        </div>
-
-        {selectedAnswer && (
-          <div className={`mt-5 text-center p-3 rounded-lg ${feedback === 'correct' ? 'bg-green-50' : 'bg-red-50'}`}>
-            <Text type={feedback === 'correct' ? 'success' : 'danger'} strong>
-              {feedback === 'correct' ? '✓ 回答正确！' : `✗ 回答错误！正确答案：${chordType.name}`}
-            </Text>
+          <div className={styles.controls}>
+            <div className={styles.difficulty}>
+              {DIFFICULTY_LABELS.map(item => (
+                <button
+                  key={item.value}
+                  className={`${styles.difficultyItem} ${
+                    difficulty === item.value ? styles.difficultyActive : ''
+                  }`}
+                  onClick={() => {
+                    setDifficulty(item.value)
+                    setTimeout(generateQuestion, 0)
+                  }}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            <div className={styles.timerToggle}>
+              <ClockCircleOutlined />
+              <Switch checked={timerOn} onChange={setTimerOn} size="small" />
+              <span>倒计时</span>
+            </div>
+            {timerOn && !selectedAnswer && (
+              <span className={`${styles.timerPill} ${timeLeft <= 3 ? styles.timerPillDanger : ''}`}>
+                {timeLeft}s
+              </span>
+            )}
           </div>
-        )}
 
-        <div className="mt-5 text-center">
-          <Text type="secondary" className="text-xs">
-            快捷键：<Tag color="default" className="text-xs">Space</Tag> 播放
-            <Tag color="default" className="text-xs ml-1">1-{chordOptions.length}</Tag> 选答案
-            <Tag color="default" className="text-xs ml-1">→</Tag> 下一题
-          </Text>
+          <div className={styles.stats}>
+            <span className={`${styles.statPill} ${styles.statPillCorrect}`}>✓ {pass}</span>
+            <span className={styles.statPill}>共 {all}</span>
+            <span className={`${styles.statPill} ${styles.statPillAccent}`}>{accuracy}%</span>
+            {combo >= 2 && (
+              <span className={`${styles.statPill} ${styles.statPillCombo}`}>
+                <FireOutlined /> {combo}连击
+              </span>
+            )}
+          </div>
+          <div className={styles.progressWrap}>
+            <Progress
+              percent={accuracy}
+              showInfo={false}
+              size="small"
+              strokeColor={{ '0%': '#1456f0', '100%': '#3b82f6' }}
+              trailColor="var(--border-light)"
+            />
+          </div>
+
+          <div className={styles.playBar}>
+            <button className={styles.btnPrimary} onClick={playQuestion} disabled={isPlaying}>
+              <SoundOutlined /> 播放和弦 <span className={styles.kbd}>Space</span>
+            </button>
+            <button className={styles.btnSecondary} onClick={generateQuestion}>
+              <ReloadOutlined /> 下一题 <span className={styles.kbd}>→</span>
+            </button>
+          </div>
+
+          <div className={`${styles.optionsGrid} ${gridCols}`}>
+            {chordOptions.map((ct, idx) => {
+              const isSelected = selectedAnswer === ct.name
+              const isCorrectAnswer = ct.name === chordType.name
+              let cls = styles.option
+              if (isSelected && isCorrectAnswer) cls += ` ${styles.optionCorrect}`
+              else if (isSelected && !isCorrectAnswer) cls += ` ${styles.optionWrong}`
+              else if (selectedAnswer && isCorrectAnswer) cls += ` ${styles.optionCorrect}`
+
+              return (
+                <button
+                  key={ct.name}
+                  className={cls}
+                  onClick={() => handleAnswer(ct)}
+                  disabled={!!selectedAnswer}
+                >
+                  <span className={styles.optionIndex}>{idx + 1}</span>
+                  <span>{ct.name}</span>
+                  {ct.symbol && <span className={styles.optionSub}>({ct.symbol})</span>}
+                </button>
+              )
+            })}
+          </div>
+
+          {selectedAnswer && (
+            <div
+              className={`${styles.feedback} ${
+                feedback === 'correct' ? styles.feedbackCorrect : styles.feedbackWrong
+              }`}
+            >
+              {feedback === 'correct'
+                ? '✓ 回答正确！'
+                : `✗ 回答错误！正确答案：${chordType.name}`}
+            </div>
+          )}
+
+          <div className={styles.shortcuts}>
+            <span className={styles.shortcutGroup}>
+              <span className={styles.kbd}>Space</span> 播放
+            </span>
+            <span className={styles.shortcutGroup}>
+              <span className={styles.kbd}>1-{chordOptions.length}</span> 选答案
+            </span>
+            <span className={styles.shortcutGroup}>
+              <span className={styles.kbd}>→</span> 下一题
+            </span>
+          </div>
         </div>
-      </Card>
+      </div>
     </div>
   )
 }

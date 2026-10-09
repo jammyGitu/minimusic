@@ -2,14 +2,13 @@
 
 import React, { useState, useEffect, useMemo } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { Layout, Menu, Button, Typography, Drawer } from 'antd'
+import { Layout, Menu, Button, Drawer } from 'antd'
 import {
   SoundOutlined,
   CustomerServiceOutlined,
   DashboardOutlined,
   BarChartOutlined,
   FileTextOutlined,
-  MenuFoldOutlined,
   MenuUnfoldOutlined,
   BulbOutlined,
   BulbFilled,
@@ -17,15 +16,14 @@ import {
   TableOutlined,
   PlaySquareOutlined,
   HomeOutlined,
+  CloseOutlined,
 } from '@ant-design/icons'
 import { useSnapshot } from 'valtio'
 import { themeState, toggleTheme } from '@/stores/theme'
 import styles from './AppLayout.module.scss'
 
-const { Sider, Content } = Layout
-const { Text } = Typography
+const { Content } = Layout
 
-// 菜单项定义
 interface MenuItem {
   key: string
   label: string
@@ -33,12 +31,18 @@ interface MenuItem {
   children?: MenuItem[]
 }
 
+// 主导航（顶部横向 pill 导航）
+const topNav = [
+  { key: '/', label: '首页' },
+  { key: '/practice/interval', label: '视唱练耳' },
+  { key: '/piano', label: '虚拟乐器' },
+  { key: '/staff', label: '工具' },
+  { key: '/progress', label: '学习进度' },
+]
+
+// 完整侧边导航（二级）
 const menuItems: MenuItem[] = [
-  {
-    key: '/',
-    label: '首页',
-    icon: <HomeOutlined />,
-  },
+  { key: '/', label: '首页', icon: <HomeOutlined /> },
   {
     key: 'ear-training',
     label: '视唱练耳',
@@ -72,14 +76,9 @@ const menuItems: MenuItem[] = [
       { key: '/editor', label: '富文本编辑器', icon: <FileTextOutlined /> },
     ],
   },
-  {
-    key: '/progress',
-    label: '学习进度',
-    icon: <BarChartOutlined />,
-  },
+  { key: '/progress', label: '学习进度', icon: <BarChartOutlined /> },
 ]
 
-// 根据路径获取页面标题
 function getPageTitle(pathname: string): string {
   const flatMap: Record<string, string> = {
     '/': '首页',
@@ -100,42 +99,44 @@ function getPageTitle(pathname: string): string {
   return flatMap[pathname] || 'Minimusic'
 }
 
+// 判断顶部导航项是否激活
+function isTopNavActive(navKey: string, pathname: string): boolean {
+  if (navKey === '/') return pathname === '/'
+  if (navKey === '/practice/interval') return pathname.startsWith('/practice')
+  if (navKey === '/piano')
+    return ['/piano', '/chord-editor', '/guitar'].some(p => pathname.startsWith(p))
+  if (navKey === '/staff')
+    return ['/staff', '/midi-roll', '/editor'].some(p => pathname.startsWith(p))
+  if (navKey === '/progress') return pathname.startsWith('/progress')
+  return false
+}
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const [collapsed, setCollapsed] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
   const { mode } = useSnapshot(themeState)
 
-  // 检测移动端
   useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768)
-    }
+    const checkMobile = () => setIsMobile(window.innerWidth < 1024)
     checkMobile()
     window.addEventListener('resize', checkMobile)
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
-  // 在移动端自动折叠侧边栏
   useEffect(() => {
-    if (isMobile) {
-      setCollapsed(true)
-    }
-  }, [isMobile])
-
-  // 计算选中的菜单项和展开的子菜单
-  const selectedKeys = useMemo(() => {
-    // 检查是否是子路径
-    const keys = [pathname]
-    return keys
-  }, [pathname])
+    const onScroll = () => setScrolled(window.scrollY > 8)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   const defaultOpenKeys = useMemo(() => {
     if (pathname.startsWith('/practice')) return ['ear-training']
-    if (pathname === '/piano' || pathname === '/chord-editor' || pathname === '/guitar') return ['instruments']
-    if (pathname === '/staff' || pathname === '/midi-roll' || pathname === '/editor') return ['tools']
+    if (['/piano', '/chord-editor', '/guitar'].includes(pathname)) return ['instruments']
+    if (['/staff', '/midi-roll', '/editor'].includes(pathname)) return ['tools']
     return []
   }, [pathname])
 
@@ -145,23 +146,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   const pageTitle = getPageTitle(pathname)
+  const isHome = pathname === '/'
 
-  // 侧边栏内容
-  const sidebarContent = (
-    <div className={styles.sidebarInner}>
-      {/* Logo */}
-      <div className={styles.logo} onClick={() => router.push('/')}>
-        <span className={styles.logoIcon}>♫</span>
-        {!collapsed && <span className={styles.logoText}>Minimusic</span>}
+  // 侧边栏导航内容（移动端抽屉）
+  const drawerContent = (
+    <div className={styles.drawerInner}>
+      <div className={styles.drawerHeader}>
+        <div className={styles.logo} onClick={() => { router.push('/'); setMobileMenuOpen(false) }}>
+          <span className={styles.logoMark}>♫</span>
+          <span className={styles.logoText}>Minimusic</span>
+        </div>
+        <Button type="text" icon={<CloseOutlined />} onClick={() => setMobileMenuOpen(false)} />
       </div>
-
-      {/* 导航菜单 */}
       <Menu
         mode="inline"
-        selectedKeys={selectedKeys}
+        selectedKeys={[pathname]}
         defaultOpenKeys={defaultOpenKeys}
         onClick={handleMenuClick}
-        className={styles.menu}
+        className={styles.drawerMenu}
         items={menuItems.map(item => ({
           key: item.key,
           icon: item.icon,
@@ -173,26 +175,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           })),
         }))}
       />
-
-      {/* 底部控制 */}
-      <div className={styles.sidebarFooter}>
-        {!isMobile && (
-          <Button
-            type="text"
-            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            onClick={() => setCollapsed(!collapsed)}
-            className={styles.collapseBtn}
-            block
-          />
-        )}
+      <div className={styles.drawerFooter}>
         <Button
           type="text"
           icon={mode === 'dark' ? <BulbFilled style={{ color: '#fbbf24' }} /> : <BulbOutlined />}
           onClick={toggleTheme}
-          className={styles.themeBtn}
           block
         >
-          {!collapsed && (mode === 'dark' ? '暗色模式' : '亮色模式')}
+          {mode === 'dark' ? '切换到亮色模式' : '切换到暗色模式'}
         </Button>
       </div>
     </div>
@@ -204,85 +194,110 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {[
         { key: '/', label: '首页', icon: <HomeOutlined /> },
         { key: '/practice/interval', label: '练习', icon: <CustomerServiceOutlined /> },
-        { key: '/piano', label: '钢琴', icon: <DashboardOutlined /> },
+        { key: '/piano', label: '乐器', icon: <DashboardOutlined /> },
         { key: '/progress', label: '进度', icon: <BarChartOutlined /> },
-      ].map(tab => (
-        <div
-          key={tab.key}
-          className={`${styles.tabItem} ${pathname === tab.key || (tab.key === '/practice/interval' && pathname.startsWith('/practice')) ? styles.tabActive : ''}`}
-          onClick={() => router.push(tab.key)}
-        >
-          <span className={styles.tabIcon}>{tab.icon}</span>
-          <span className={styles.tabLabel}>{tab.label}</span>
-        </div>
-      ))}
+      ].map(tab => {
+        const active =
+          pathname === tab.key ||
+          (tab.key === '/practice/interval' && pathname.startsWith('/practice')) ||
+          (tab.key === '/piano' && ['/piano', '/chord-editor', '/guitar'].includes(pathname))
+        return (
+          <div
+            key={tab.key}
+            className={`${styles.tabItem} ${active ? styles.tabActive : ''}`}
+            onClick={() => router.push(tab.key)}
+          >
+            <span className={styles.tabIcon}>{tab.icon}</span>
+            <span className={styles.tabLabel}>{tab.label}</span>
+          </div>
+        )
+      })}
     </div>
   )
 
   return (
     <Layout className={styles.layout} data-theme={mode}>
-      {/* 桌面端侧边栏 */}
-      {!isMobile && (
-        <Sider
-          collapsible
-          collapsed={collapsed}
-          onCollapse={setCollapsed}
-          trigger={null}
-          width={240}
-          collapsedWidth={80}
-          className={styles.sider}
-        >
-          {sidebarContent}
-        </Sider>
-      )}
+      {/* 顶部导航栏（MiniMax 风格：白底 + pill 激活态） */}
+      <header className={`${styles.topNav} ${scrolled ? styles.topNavScrolled : ''}`}>
+        <div className={styles.topNavInner}>
+          {/* Logo */}
+          <div className={styles.logo} onClick={() => router.push('/')}>
+            <span className={styles.logoMark}>♫</span>
+            <span className={styles.logoText}>Minimusic</span>
+          </div>
 
-      {/* 移动端抽屉菜单 */}
-      {isMobile && (
-        <>
-          <Drawer
-            placement="left"
-            open={mobileMenuOpen}
-            onClose={() => setMobileMenuOpen(false)}
-            width={260}
-            className={styles.mobileDrawer}
-            styles={{ body: { padding: 0 } }}
-          >
-            {sidebarContent}
-          </Drawer>
-        </>
-      )}
+          {/* 桌面端横向导航 */}
+          {!isMobile && (
+            <nav className={styles.navLinks}>
+              {topNav.map(item => (
+                <button
+                  key={item.key}
+                  className={`${styles.navLink} ${isTopNavActive(item.key, pathname) ? styles.navLinkActive : ''}`}
+                  onClick={() => router.push(item.key)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </nav>
+          )}
 
-      {/* 主内容区 */}
-      <Layout className={styles.mainLayout}>
-        {/* 顶部栏 */}
-        <div className={styles.topBar}>
-          <div className={styles.topBarLeft}>
+          {/* 右侧操作 */}
+          <div className={styles.topNavRight}>
+            <Button
+              type="text"
+              shape="circle"
+              icon={mode === 'dark' ? <BulbFilled style={{ color: '#fbbf24' }} /> : <BulbOutlined />}
+              onClick={toggleTheme}
+              aria-label="切换主题"
+            />
+            {!isMobile && (
+              <Button
+                type="primary"
+                className={styles.ctaBtn}
+                onClick={() => router.push('/practice/interval')}
+              >
+                开始练习
+              </Button>
+            )}
             {isMobile && (
               <Button
                 type="text"
                 icon={<MenuUnfoldOutlined />}
                 onClick={() => setMobileMenuOpen(true)}
-                className={styles.mobileMenuBtn}
-              />
-            )}
-            <Text strong className={styles.pageTitle}>{pageTitle}</Text>
-          </div>
-          <div className={styles.topBarRight}>
-            {isMobile && (
-              <Button
-                type="text"
-                icon={mode === 'dark' ? <BulbFilled style={{ color: '#fbbf24' }} /> : <BulbOutlined />}
-                onClick={toggleTheme}
+                aria-label="打开菜单"
               />
             )}
           </div>
         </div>
+      </header>
 
-        {/* 页面内容 */}
-        <Content className={styles.content}>
-          {children}
-        </Content>
-      </Layout>
+      {/* 移动端抽屉 */}
+      {isMobile && (
+        <Drawer
+          placement="left"
+          open={mobileMenuOpen}
+          onClose={() => setMobileMenuOpen(false)}
+          width={280}
+          className={styles.mobileDrawer}
+          closable={false}
+          styles={{ body: { padding: 0 } }}
+        >
+          {drawerContent}
+        </Drawer>
+      )}
+
+      {/* 页面内容 */}
+      <Content className={`${styles.content} ${isHome ? styles.contentHome : ''}`}>
+        {/* 非首页显示页面标题条 */}
+        {!isHome && (
+          <div className={styles.pageHeader}>
+            <div className={styles.pageHeaderInner}>
+              <h1 className={styles.pageTitle}>{pageTitle}</h1>
+            </div>
+          </div>
+        )}
+        <div className={styles.pageBody}>{children}</div>
+      </Content>
 
       {/* 移动端底部导航 */}
       {isMobile && mobileTabBar}

@@ -1,47 +1,130 @@
+/* ============================================================
+   Minimusic 设计系统 — MiniMax 风格
+   White-dominant · 彩色产品卡片 · Pill 按钮 · 紫色调阴影
+   ============================================================ */
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ==================== CSS 变量 ==================== */
+/* ==================== 设计 Token · 亮色（默认） ==================== */
 
 :root {
-  --bg-primary: #ffffff;
-  --bg-secondary: #f5f3ef;
-  --bg-tertiary: #fafaf9;
-  --text-primary: #1a1a1a;
-  --text-secondary: #999999;
-  --text-muted: #bfbfbf;
-  --text-tertiary: #cccccc;
-  --border-color: rgba(0, 0, 0, 0.06);
-  --accent-color: #b8944f;
-  --accent-hover: #a0803f;
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 4px 24px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.12);
+  /* --- 品牌色 --- */
+  --brand-blue: #1456f0;        /* brand-6 主品牌色 */
+  --brand-sky: #3daeff;         /* col-brand00 浅蓝 */
+  --brand-pink: #ea5ec1;        /* col-brand02 次要强调（仅装饰） */
+
+  /* --- 蓝色阶 --- */
+  --primary-200: #bfdbfe;
+  --primary-light: #60a5fa;
+  --primary-500: #3b82f6;
+  --primary-600: #2563eb;
+  --primary-700: #1d4ed8;
+  --brand-deep: #17437d;
+
+  /* --- 文本 --- */
+  --text-primary: #222222;      /* col-text00 主文本 */
+  --text-heading: #18181b;      /* 标题 */
+  --text-secondary: #45515e;    /* col-text04 次要文本 */
+  --text-muted: #8e8e93;        /* 三级文本 */
+  --text-helper: #5f5f5f;
+
+  /* --- 表面与背景 --- */
+  --bg-primary: #ffffff;        /* col-bg13 主背景 */
+  --bg-secondary: #f0f0f0;      /* 次要按钮背景 */
+  --bg-tertiary: #fafafa;
+  --glass-white: hsla(0, 0%, 100%, 0.4);
+  --border-light: #f2f3f5;      /* 细分隔线 */
+  --border-gray: #e5e7eb;       /* 组件边框 */
+  --surface-dark: #181e25;      /* 暗色 footer */
+
+  /* --- 语义 --- */
+  --success-bg: #e8ffea;
+  --success-color: #22c55e;
+  --error-color: #ef4444;
+  --warning-color: #f59e0b;
+
+  /* --- 阴影 --- */
+  --shadow-standard: rgba(0, 0, 0, 0.08) 0px 4px 6px;
+  --shadow-soft: rgba(0, 0, 0, 0.08) 0px 0px 22.576px;
+  --shadow-brand: rgba(44, 30, 116, 0.16) 0px 0px 15px;
+  --shadow-brand-offset: rgba(44, 30, 116, 0.11) 6.5px 2px 17.5px;
+  --shadow-elevated: rgba(36, 36, 36, 0.08) 0px 12px 16px -4px;
+
+  /* --- 兼容旧变量（钢琴键等） --- */
   --key-white: #ffffff;
   --key-white-hover: #f3f4f6;
   --key-black: #1f2937;
   --key-black-hover: #374151;
+
+  /* --- 字体 --- */
+  --font-ui: var(--font-dm-sans), 'Helvetica Neue', Helvetica, Arial,
+    'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-display: var(--font-outfit), 'Helvetica Neue', Helvetica, Arial,
+    'Noto Sans SC', 'PingFang SC', sans-serif;
+  --font-mid: var(--font-poppins), 'Noto Sans SC', 'PingFang SC', sans-serif;
+  --font-data: var(--font-roboto), 'Helvetica Neue', Helvetica, Arial,
+    'Noto Sans SC', 'PingFang SC', sans-serif;
+
+  /* --- 圆角 --- */
+  --radius-tag: 4px;
+  --radius-standard: 8px;
+  --radius-comfortable: 12px;
+  --radius-generous: 20px;
+  --radius-large: 24px;
+  --radius-pill: 9999px;
 }
 
+/* ==================== 设计 Token · 暗色 ==================== */
+
 [data-theme='dark'] {
-  --bg-primary: #141414;
-  --bg-secondary: #1f1f1f;
-  --bg-tertiary: #262626;
-  --text-primary: #e8e8e8;
-  --text-secondary: #666666;
-  --text-muted: #4a4a4a;
-  --text-tertiary: #434343;
-  --border-color: rgba(255, 255, 255, 0.08);
-  --accent-color: #c9a84c;
-  --accent-hover: #d4b65f;
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 24px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.5);
-  --key-white: #2a2a2a;
-  --key-white-hover: #333333;
-  --key-black: #111111;
-  --key-black-hover: #1a1a1a;
+  /* --- 品牌色（暗色下保持品牌调性，略提亮） --- */
+  --brand-blue: #3b82f6;
+  --brand-sky: #60a5fa;
+  --brand-pink: #f472d0;
+
+  --primary-200: #1e3a5f;
+  --primary-light: #60a5fa;
+  --primary-500: #3b82f6;
+  --primary-600: #2563eb;
+  --primary-700: #1d4ed8;
+  --brand-deep: #60a5fa;
+
+  /* --- 文本 --- */
+  --text-primary: #ededed;
+  --text-heading: #f5f5f7;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --text-helper: #8e8e93;
+
+  /* --- 表面与背景 --- */
+  --bg-primary: #0f1115;        /* 深色画布 */
+  --bg-secondary: #1a1d23;      /* 略亮表面 */
+  --bg-tertiary: #22262e;
+  --glass-white: hsla(0, 0%, 100%, 0.06);
+  --border-light: rgba(255, 255, 255, 0.08);
+  --border-gray: rgba(255, 255, 255, 0.12);
+  --surface-dark: #181e25;
+
+  /* --- 语义 --- */
+  --success-bg: rgba(34, 197, 94, 0.15);
+  --success-color: #4ade80;
+  --error-color: #f87171;
+  --warning-color: #fbbf24;
+
+  /* --- 阴影（暗色下用纯黑更深 + 品牌蓝辉光） --- */
+  --shadow-standard: rgba(0, 0, 0, 0.4) 0px 4px 6px;
+  --shadow-soft: rgba(0, 0, 0, 0.5) 0px 0px 22.576px;
+  --shadow-brand: rgba(59, 130, 246, 0.18) 0px 0px 15px;
+  --shadow-brand-offset: rgba(59, 130, 246, 0.12) 6.5px 2px 17.5px;
+  --shadow-elevated: rgba(0, 0, 0, 0.5) 0px 12px 16px -4px;
+
+  /* --- 兼容旧变量 --- */
+  --key-white: #2a2d34;
+  --key-white-hover: #34383f;
+  --key-black: #121418;
+  --key-black-hover: #1a1d23;
 }
 
 /* ==================== 全局重置 ==================== */
@@ -61,16 +144,50 @@ html {
 body {
   margin: 0;
   padding: 0;
-  font-family: 'Georgia', 'Times New Roman', 'Noto Serif SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family: var(--font-ui);
+  font-size: 16px;
+  line-height: 1.5;
   background: var(--bg-primary);
   color: var(--text-primary);
-  line-height: 1.6;
   transition: background-color 0.3s ease, color 0.3s ease;
 }
+
+/* 标题默认使用几何展示字体 */
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--text-heading);
+}
+
+h1 { letter-spacing: -0.01em; }
 
 a {
   color: inherit;
   text-decoration: none;
+}
+
+/* ==================== 工具类 ==================== */
+
+/* 展示字体 */
+.font-display { font-family: var(--font-display); }
+.font-mid { font-family: var(--font-mid); }
+.font-data { font-family: var(--font-data); }
+
+/* 文本层级 */
+.text-primary { color: var(--text-primary); }
+.text-secondary { color: var(--text-secondary); }
+.text-muted { color: var(--text-muted); }
+
+/* Pill 按钮基底 */
+.pill {
+  border-radius: var(--radius-pill);
+}
+
+/* 品牌紫阴影卡片 */
+.card-brand {
+  border-radius: var(--radius-generous);
+  box-shadow: var(--shadow-brand);
 }
 
 /* ==================== 滚动条 ==================== */
@@ -85,18 +202,18 @@ a {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--text-tertiary);
+  background: var(--border-gray);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
+  background: var(--text-muted);
 }
 
 /* ==================== 选中文本 ==================== */
 
 ::selection {
-  background: var(--accent-color);
+  background: var(--brand-blue);
   color: #fff;
 }
 
@@ -107,5 +224,23 @@ body,
 .ant-menu,
 .ant-card,
 .ant-btn {
-  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease !important;
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* ==================== Ant Design 样式微调（MiniMax 化） ==================== */
+
+/* 卡片默认使用宽松圆角 */
+.ant-card {
+  border-radius: var(--radius-generous);
+}
+
+/* 按钮 pill 化（主要按钮） */
+.ant-btn-primary {
+  border-radius: var(--radius-standard);
+  font-weight: 500;
+}
+
+/* 标签 pill 化 */
+.ant-tag {
+  border-radius: var(--radius-pill);
 }
