@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useEffect, useRef, useState, useCallback } from 'react'
-import { Card, Button, Input, Space, Typography, Tag, Divider, message, Row, Col } from 'antd'
 import {
   PlayCircleOutlined,
   PauseCircleOutlined,
@@ -9,8 +8,7 @@ import {
   SoundOutlined,
 } from '@ant-design/icons'
 import { moaTone } from '@/utils/MoaTone'
-
-const { Title, Text, Paragraph } = Typography
+import styles from './staff.module.scss'
 
 interface PresetScore {
   title: string
@@ -98,6 +96,20 @@ K:Am
 E D# E D# | E B D C | A c e a | b e ^g b |
 c e a b | c' d' e' c' | b a g# f | e f e d |`,
   },
+]
+
+// ABC 记谱法快速参考
+const ABC_REF = [
+  { code: 'X:1', desc: '曲目编号' },
+  { code: 'T:标题', desc: '乐曲标题' },
+  { code: 'M:4/4', desc: '拍号' },
+  { code: 'L:1/4', desc: '默认音符长度' },
+  { code: 'K:C', desc: '调性' },
+  { code: 'C D E F', desc: '音符（大写=中音区）' },
+  { code: 'c d e f', desc: '音符（小写=高音区）' },
+  { code: '^C _D', desc: '升号 / 降号' },
+  { code: 'C2 D4', desc: '数字 = 音符时值' },
+  { code: '|', desc: '小节线' },
 ]
 
 export default function StaffNotation() {
@@ -191,12 +203,10 @@ export default function StaffNotation() {
         })
         .catch((err: any) => {
           console.error('ABCJS 播放失败:', err)
-          message.warning('浏览器不支持 ABCJS 合成器播放，请尝试用下方 Tone.js 播放')
           setIsPlaying(false)
         })
     } catch (err) {
       console.error('ABCJS 播放初始化失败:', err)
-      message.warning('播放失败，请尝试用下方 Tone.js 播放')
     }
   }
 
@@ -206,8 +216,6 @@ export default function StaffNotation() {
     const notes = parseABCNotes(abcInput)
     if (notes.length > 0) {
       await moaTone.playSequence(notes, 0.4)
-    } else {
-      message.warning('未能解析到有效音符')
     }
   }
 
@@ -297,75 +305,68 @@ export default function StaffNotation() {
   }, [])
 
   return (
-    <div className="max-w-5xl mx-auto p-4 md:p-6">
+    <div className={styles.page}>
       {/* 标题 */}
-      <div className="text-center mb-6">
-        <Title level={2} style={{ marginBottom: 4 }}>
-          📖 五线谱
-        </Title>
-        <Text type="secondary">ABC 记谱法渲染与播放，支持乐谱交互</Text>
+      <div className={styles.head}>
+        <h2 className={styles.title}>📖 五线谱</h2>
+        <p className={styles.subtitle}>ABC 记谱法渲染与播放，支持乐谱交互</p>
       </div>
 
       {/* 预设乐谱选择 */}
-      <Card className="mb-4" size="small">
-        <Text strong className="block mb-2">
-          预设乐谱：
-        </Text>
-        <Space wrap size={[8, 8]}>
+      <div className={styles.card}>
+        <span className={styles.presetLabel}>预设乐谱</span>
+        <div className={styles.presetRow}>
           {PRESET_SCORES.map((score, index) => (
-            <Button
+            <button
               key={index}
-              type={currentPreset === index ? 'primary' : 'default'}
-              size="small"
+              className={`${styles.presetBtn} ${currentPreset === index ? styles.presetBtnActive : ''}`}
               onClick={() => selectPreset(index)}
+              type="button"
             >
               {score.title}
-            </Button>
+            </button>
           ))}
-        </Space>
-      </Card>
+        </div>
+      </div>
 
       {/* 五线谱渲染区 */}
-      <Card className="mb-4">
-        <div
-          ref={sheetRef}
-          className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 min-h-[180px] bg-white dark:bg-gray-800 overflow-x-auto"
-          style={{ fontFamily: 'monospace' }}
-        />
-      </Card>
+      <div className={styles.card}>
+        <div ref={sheetRef} className={styles.sheetBox} />
+      </div>
 
       {/* 播放控制 */}
-      <div className="flex justify-center gap-3 mb-4">
-        <Button
-          type="primary"
-          size="large"
-          icon={isPlaying ? <PauseCircleOutlined /> : <PlayCircleOutlined />}
+      <div className={styles.playBar}>
+        <button
+          className={styles.btnPrimary}
           onClick={playSheet}
           disabled={!abcjsLoaded}
+          type="button"
         >
+          {isPlaying ? <PauseCircleOutlined /> : <PlayCircleOutlined />}
           {isPlaying ? '停止播放' : 'ABCJS 播放'}
-        </Button>
-        <Button
-          size="large"
-          icon={<SoundOutlined />}
+        </button>
+        <button
+          className={styles.btnSecondary}
           onClick={playWithTone}
           disabled={isPlaying}
+          type="button"
         >
-          Tone.js 播放
-        </Button>
-        <Button
-          size="large"
-          icon={<SyncOutlined />}
+          <SoundOutlined /> Tone.js 播放
+        </button>
+        <button
+          className={styles.btnSecondary}
           onClick={renderSheet}
           disabled={!abcjsLoaded}
+          type="button"
         >
-          重新渲染
-        </Button>
+          <SyncOutlined /> 重新渲染
+        </button>
       </div>
 
       {/* ABC 输入区 */}
-      <Card title="ABC 记谱法输入" className="mb-4">
-        <Input.TextArea
+      <div className={styles.card}>
+        <h3 className={styles.cardTitle}>ABC 记谱法输入</h3>
+        <textarea
           value={abcInput}
           onChange={(e) => {
             setAbcInput(e.target.value)
@@ -373,66 +374,22 @@ export default function StaffNotation() {
           }}
           rows={8}
           placeholder="输入 ABC 记谱法..."
-          className="font-mono text-sm"
+          className={styles.textarea}
         />
-      </Card>
+      </div>
 
       {/* 说明卡片 */}
-      <Card title="🎵 ABC 记谱法快速参考" size="small">
-        <Row gutter={[16, 8]}>
-          <Col xs={12} sm={6}>
-            <Text code>X:1</Text>
-            <br />
-            <Text type="secondary">曲目编号</Text>
-          </Col>
-          <Col xs={12} sm={6}>
-            <Text code>T:标题</Text>
-            <br />
-            <Text type="secondary">乐曲标题</Text>
-          </Col>
-          <Col xs={12} sm={6}>
-            <Text code>M:4/4</Text>
-            <br />
-            <Text type="secondary">拍号</Text>
-          </Col>
-          <Col xs={12} sm={6}>
-            <Text code>L:1/4</Text>
-            <br />
-            <Text type="secondary">默认音符长度</Text>
-          </Col>
-          <Col xs={12} sm={6}>
-            <Text code>K:C</Text>
-            <br />
-            <Text type="secondary">调性</Text>
-          </Col>
-          <Col xs={12} sm={6}>
-            <Text code>C D E F</Text>
-            <br />
-            <Text type="secondary">音符（大写=中音区）</Text>
-          </Col>
-          <Col xs={12} sm={6}>
-            <Text code>c d e f</Text>
-            <br />
-            <Text type="secondary">音符（小写=高音区）</Text>
-          </Col>
-          <Col xs={12} sm={6}>
-            <Text code>^C _D</Text>
-            <br />
-            <Text type="secondary">升号/降号</Text>
-          </Col>
-          <Col xs={12} sm={6}>
-            <Text code>C2 D4</Text>
-            <br />
-            <Text type="secondary">数字=音符时值</Text>
-          </Col>
-          <Col xs={12} sm={6}>
-            <Text code>|</Text>
-            <br />
-            <Text type="secondary">小节线</Text>
-          </Col>
-        </Row>
-      </Card>
+      <div className={styles.card}>
+        <h3 className={styles.cardTitle}>🎵 ABC 记谱法快速参考</h3>
+        <div className={styles.refGrid}>
+          {ABC_REF.map((item) => (
+            <div key={item.code}>
+              <span className={styles.refCode}>{item.code}</span>
+              <div className={styles.refDesc}>{item.desc}</div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
-

@@ -1,12 +1,11 @@
 'use client'
 
 import React, { useState, useCallback, useMemo } from 'react'
-import { Card, Button, Select, Tag, Typography, Row, Col, Space, Tooltip } from 'antd'
+import { Select, Tooltip } from 'antd'
 import { PlayCircleOutlined, SoundOutlined } from '@ant-design/icons'
 import { moaTone } from '@/utils/MoaTone'
 import { CHORD_TYPES, buildChord, ChordType } from '@/utils/chord'
-
-const { Title, Text } = Typography
+import styles from './instruments.module.scss'
 
 const ROOTS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
@@ -109,25 +108,25 @@ export default function GuitarEditor() {
   ]
 
   return (
-    <div className="max-w-4xl mx-auto p-4 md:p-6">
-      <div className="text-center mb-6">
-        <Title level={2} style={{ marginBottom: 4 }}>🎸 吉他指板</Title>
-        <Text type="secondary">交互式吉他指板，学习和弦指法，点击试听</Text>
+    <div className={styles.page}>
+      <div className={styles.head}>
+        <h2 className={styles.title}>🎸 吉他指板</h2>
+        <p className={styles.subtitle}>交互式吉他指板，学习和弦指法，点击试听</p>
       </div>
 
       {/* 选择器 */}
-      <Card className="mb-4">
-        <Row gutter={[16, 16]} align="middle">
-          <Col xs={24} sm={6}>
-            <Text strong className="block mb-1">根音</Text>
+      <div className={styles.card}>
+        <div className={styles.fieldGrid}>
+          <div className={styles.field}>
+            <label className={styles.fieldLabel}>根音</label>
             <Select value={root} onChange={setRoot} style={{ width: '100%' }} size="large">
               {ROOTS.map(r => (
                 <Select.Option key={r} value={r}>{r}</Select.Option>
               ))}
             </Select>
-          </Col>
-          <Col xs={24} sm={10}>
-            <Text strong className="block mb-1">和弦类型</Text>
+          </div>
+          <div className={styles.field}>
+            <label className={styles.fieldLabel}>和弦类型</label>
             <Select
               value={chordType.name}
               onChange={(value) => {
@@ -150,44 +149,39 @@ export default function GuitarEditor() {
                 </Select.OptGroup>
               ))}
             </Select>
-          </Col>
-          <Col xs={24} sm={8}>
-            <Text strong className="block mb-1">模式</Text>
+          </div>
+          <div className={styles.field}>
+            <label className={styles.fieldLabel}>模式</label>
             <Select value={viewMode} onChange={setViewMode} style={{ width: '100%' }} size="large">
               <Select.Option value="chord">和弦指法模式</Select.Option>
               <Select.Option value="free">自由探索模式</Select.Option>
             </Select>
-          </Col>
-        </Row>
-
-        {/* 和弦名称 */}
-        <div className="text-center mt-4">
-          <Tag color="orange" className="text-2xl px-8 py-2 font-bold">
-            {root}{chordType.symbol || ''}
-          </Tag>
-          <Button
-            type="primary"
-            size="large"
-            icon={<PlayCircleOutlined />}
-            onClick={playChord}
-            className="ml-4"
-          >
-            播放和弦
-          </Button>
+          </div>
         </div>
-      </Card>
+
+        {/* 和弦名称 + 播放 */}
+        <div className={styles.chordNameWrap}>
+          <span className={`${styles.chordName} ${styles.chordNameOrange}`}>
+            {root}{chordType.symbol || ''}
+          </span>
+          <button className={styles.btnPrimary} onClick={playChord} type="button">
+            <PlayCircleOutlined /> 播放和弦
+          </button>
+        </div>
+      </div>
 
       {/* 吉他指板 */}
-      <Card title="指板视图" size="small">
-        <div className="overflow-x-auto pb-4">
-          <div className="min-w-[700px]">
+      <div className={styles.card}>
+        <h3 className={styles.cardTitle}>指板视图</h3>
+        <div className={styles.fretScroll}>
+          <div className={styles.fretInner}>
             {/* 品位标记行 */}
-            <div className="flex mb-1">
-              <div className="w-16 shrink-0" />
+            <div className={styles.fretNumberRow}>
+              <div className={styles.fretNumberSpacer} />
               {Array.from({ length: FRETS + 1 }).map((_, i) => (
                 <div
                   key={i}
-                  className={`flex-1 text-center text-xs ${FRET_MARKERS.includes(i) ? 'font-bold text-gray-700' : 'text-gray-400'}`}
+                  className={`${styles.fretNumber} ${FRET_MARKERS.includes(i) ? styles.fretNumberMark : ''}`}
                 >
                   {FRET_MARKERS.includes(i) ? i : ''}
                 </div>
@@ -195,17 +189,17 @@ export default function GuitarEditor() {
             </div>
 
             {/* 品位标记点 */}
-            <div className="flex mb-1">
-              <div className="w-16 shrink-0" />
+            <div className={styles.fretDotRow}>
+              <div className={styles.fretNumberSpacer} />
               {Array.from({ length: FRETS + 1 }).map((_, i) => (
-                <div key={i} className="flex-1 flex justify-center">
+                <div key={i} style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
                   {[3, 5, 7, 9, 15].includes(i) && (
-                    <div className="w-2 h-2 rounded-full bg-gray-400" />
+                    <div className={styles.fretDot} />
                   )}
                   {i === 12 && (
                     <>
-                      <div className="w-2 h-2 rounded-full bg-gray-400" />
-                      <div className="w-2 h-2 rounded-full bg-gray-400 ml-1" />
+                      <div className={styles.fretDot} />
+                      <div className={styles.fretDot} style={{ marginLeft: 4 }} />
                     </>
                   )}
                 </div>
@@ -213,99 +207,86 @@ export default function GuitarEditor() {
             </div>
 
             {/* 琴弦 */}
-            {STRINGS.map((string, stringIndex) => {
-              const stringThickness = 1 + (5 - stringIndex) * 0.5
-
-              return (
-                <div key={stringIndex} className="flex items-center">
-                  {/* 空弦标签 */}
-                  <div className="w-16 shrink-0 text-right pr-3">
-                    <Text strong className="text-sm">{string.name}{string.octave}</Text>
-                    <br />
-                    <Text type="secondary" className="text-xs">{string.label}</Text>
-                  </div>
-
-                  {/* 品位格子 */}
-                  {Array.from({ length: FRETS + 1 }).map((_, fretIndex) => {
-                    const isFingering = viewMode === 'chord' && chordFingering.some(
-                      f => f.string === stringIndex && f.fret === fretIndex
-                    )
-                    const isSelected = selectedFret?.string === stringIndex && selectedFret?.fret === fretIndex
-                    const note = getNoteAtFret(string.name, string.octave, fretIndex)
-                    const isActive = activeNotes.has(note.full)
-
-                    return (
-                      <Tooltip key={fretIndex} title={note.full} placement="top">
-                        <button
-                          onClick={() => handleFretClick(stringIndex, fretIndex)}
-                          className={`
-                            flex-1 h-12 border transition-all duration-150
-                            flex items-center justify-center
-                            ${fretIndex === 0 ? 'border-l-4 border-l-gray-500' : 'border-l border-l-gray-300'}
-                            ${stringIndex < STRINGS.length - 1 ? 'border-b border-b-gray-200' : ''}
-                            ${isFingering ? 'bg-green-200 hover:bg-green-300' :
-                              isSelected ? 'bg-blue-200 ring-2 ring-blue-400 z-10' :
-                              isActive ? 'bg-yellow-100' :
-                              'bg-amber-50 hover:bg-amber-100'}
-                            cursor-pointer text-xs
-                          `}
-                        >
-                          {isFingering && (
-                            <div className={`
-                              w-5 h-5 rounded-full flex items-center justify-center text-white font-bold text-xs
-                              ${isActive ? 'bg-blue-500' : 'bg-green-600'}
-                            `}>
-                              {note.name}
-                            </div>
-                          )}
-                          {!isFingering && isSelected && (
-                            <div className="w-5 h-5 rounded-full bg-blue-400 flex items-center justify-center text-white font-bold text-xs">
-                              {note.name}
-                            </div>
-                          )}
-                        </button>
-                      </Tooltip>
-                    )
-                  })}
+            {STRINGS.map((string, stringIndex) => (
+              <div key={stringIndex} className={styles.stringRow}>
+                {/* 空弦标签 */}
+                <div className={styles.stringLabel}>
+                  <div className={styles.stringName}>{string.name}{string.octave}</div>
+                  <div className={styles.stringDesc}>{string.label}</div>
                 </div>
-              )
-            })}
-          </div>
-        </div>
-      </Card>
 
-      {/* 指法详情 */}
-      <Card title="指法详情" size="small" className="mt-4">
-        <Row gutter={[8, 8]}>
-          {chordFingering.map((f, index) => (
-            <Col xs={12} sm={8} md={4} key={index}>
-              <Button
-                block
-                icon={<SoundOutlined />}
-                onClick={() => playNote(f.string, f.fret)}
-                type={activeNotes.has(f.note) ? 'primary' : 'default'}
-              >
-                <span className="text-xs">
-                  {STRINGS[f.string].name}弦
-                  {f.fret > 0 ? `${f.fret}品` : '空弦'}
-                  {' → '}{f.note}
-                </span>
-              </Button>
-            </Col>
-          ))}
-        </Row>
+                {/* 品位格子 */}
+                {Array.from({ length: FRETS + 1 }).map((_, fretIndex) => {
+                  const isFingering = viewMode === 'chord' && chordFingering.some(
+                    f => f.string === stringIndex && f.fret === fretIndex
+                  )
+                  const isSelected = selectedFret?.string === stringIndex && selectedFret?.fret === fretIndex
+                  const note = getNoteAtFret(string.name, string.octave, fretIndex)
+                  const isActive = activeNotes.has(note.full)
 
-        <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-          <Text strong>🎸 指法文字描述：</Text>
-          <div className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            {chordFingering.map((f, i) => (
-              <Tag key={i} color="green" className="mb-1">
-                {i + 1}指: {STRINGS[f.string].name}弦 {f.fret === 0 ? '空弦' : `${f.fret}品`} ({f.note})
-              </Tag>
+                  const cls = [
+                    styles.fretCell,
+                    fretIndex === 0 ? styles.fretCellNut : '',
+                    stringIndex === STRINGS.length - 1 ? styles.fretCellLastRow : '',
+                    isFingering ? styles.fretCellFingering : '',
+                    isSelected ? styles.fretCellSelected : '',
+                  ].join(' ')
+
+                  return (
+                    <Tooltip key={fretIndex} title={note.full} placement="top">
+                      <button
+                        onClick={() => handleFretClick(stringIndex, fretIndex)}
+                        className={cls}
+                        type="button"
+                      >
+                        {isFingering && (
+                          <div className={`${styles.fretNoteDot} ${isActive ? styles.fretNoteDotActive : styles.fretNoteDotFingering}`}>
+                            {note.name}
+                          </div>
+                        )}
+                        {!isFingering && isSelected && (
+                          <div className={`${styles.fretNoteDot} ${styles.fretNoteDotSelected}`}>
+                            {note.name}
+                          </div>
+                        )}
+                      </button>
+                    </Tooltip>
+                  )
+                })}
+              </div>
             ))}
           </div>
         </div>
-      </Card>
+      </div>
+
+      {/* 指法详情 */}
+      <div className={styles.card}>
+        <h3 className={styles.cardTitle}>指法详情</h3>
+        <div className={styles.fingeringGrid}>
+          {chordFingering.map((f, index) => (
+            <button
+              key={index}
+              className={`${styles.fingeringBtn} ${activeNotes.has(f.note) ? styles.fingeringBtnActive : ''}`}
+              onClick={() => playNote(f.string, f.fret)}
+              type="button"
+            >
+              <SoundOutlined />
+              {STRINGS[f.string].name}弦{f.fret > 0 ? `${f.fret}品` : '空弦'} → {f.note}
+            </button>
+          ))}
+        </div>
+
+        <div className={styles.fingeringPanel}>
+          <p className={styles.fingeringPanelTitle}>🎸 指法文字描述</p>
+          <div className={styles.tagRow}>
+            {chordFingering.map((f, i) => (
+              <span key={i} className={`${styles.tag} ${styles.tagGreen}`}>
+                {i + 1}指: {STRINGS[f.string].name}弦 {f.fret === 0 ? '空弦' : `${f.fret}品`} ({f.note})
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

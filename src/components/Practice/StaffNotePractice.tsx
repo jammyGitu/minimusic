@@ -1,13 +1,12 @@
 'use client'
 
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { Card, Button, Progress, message, Space, Typography, Segmented, Switch, Tag } from 'antd'
+import { Progress, message, Switch } from 'antd'
 import { PlayCircleOutlined, SyncOutlined, FireOutlined, ClockCircleOutlined } from '@ant-design/icons'
 import ABCJS from 'abcjs'
 import { moaTone } from '@/utils/MoaTone'
 import { addPracticeRecord } from '@/stores/progress'
-
-const { Title, Text } = Typography
+import styles from '../StaffNotation/staff.module.scss'
 
 type Difficulty = 'easy' | 'medium' | 'hard'
 
@@ -42,7 +41,12 @@ const SCORES = [
 
 const PIANO_WHITE_NOTES = ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5', 'D5', 'E5', 'F5', 'G5', 'A5', 'B5']
 const PIANO_BLACK_NOTES = ['C#4', 'D#4', 'F#4', 'G#4', 'A#4', 'C#5', 'D#5', 'F#5', 'G#5', 'A#5']
-const ALL_PIANO_NOTES = [...PIANO_WHITE_NOTES, ...PIANO_BLACK_NOTES]
+
+const DIFFICULTY_LABELS: { label: string; value: Difficulty }[] = [
+  { label: '初级', value: 'easy' },
+  { label: '中级', value: 'medium' },
+  { label: '高级', value: 'hard' },
+]
 
 export default function StaffNotePractice() {
   const sheetRef = useRef<HTMLDivElement>(null)
@@ -115,7 +119,6 @@ export default function StaffNotePractice() {
     setActiveKey(note)
     setTimeout(() => setActiveKey(null), 200)
 
-    const nextIdx = userInput.length
     const newInput = [...userInput, note]
     setUserInput(newInput)
 
@@ -193,67 +196,98 @@ export default function StaffNotePractice() {
     : 0
 
   return (
-    <div className="max-w-4xl mx-auto p-4 md:p-6">
-      <Card className={feedback === 'correct' ? 'ring-2 ring-green-400' : feedback === 'wrong' ? 'ring-2 ring-red-400' : ''}
-        style={{ transition: 'box-shadow 0.3s' }}>
-        <div className="text-center mb-4">
-          <Title level={2} className="!mb-1">🎹 五线谱视奏练习</Title>
-          <Text type="secondary">观看五线谱，使用下方虚拟钢琴演奏正确的音符</Text>
-          <div className="mt-1">
-            <Tag color="blue">{currentScore.title}</Tag>
+    <div className={`${styles.page} ${styles.pageNarrow}`}>
+      <div
+        className={`${styles.card} ${
+          feedback === 'correct' ? styles.cardCorrect : feedback === 'wrong' ? styles.cardWrong : ''
+        }`}
+      >
+        {/* 标题 */}
+        <div className={styles.head}>
+          <h2 className={styles.title}>🎹 五线谱视奏练习</h2>
+          <p className={styles.subtitle}>观看五线谱，使用下方虚拟钢琴演奏正确的音符</p>
+          <div style={{ marginTop: 8 }}>
+            <span className={styles.statPillAccent + ' ' + styles.statPill}>{currentScore.title}</span>
           </div>
         </div>
 
-        <div className="flex flex-wrap justify-center items-center gap-3 mb-4">
-          <Segmented value={difficulty} onChange={(v) => { setDifficulty(v as Difficulty); setTimeout(generateQuestion, 0) }}
-            options={[{ label: '初级', value: 'easy' }, { label: '中级', value: 'medium' }, { label: '高级', value: 'hard' }]} />
-          <Space>
+        {/* 控制区 */}
+        <div className={styles.controls}>
+          <div className={styles.difficulty}>
+            {DIFFICULTY_LABELS.map(item => (
+              <button
+                key={item.value}
+                className={`${styles.difficultyItem} ${difficulty === item.value ? styles.difficultyActive : ''}`}
+                onClick={() => {
+                  setDifficulty(item.value)
+                  setTimeout(generateQuestion, 0)
+                }}
+                type="button"
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+          <div className={styles.timerToggle}>
             <ClockCircleOutlined />
             <Switch checked={timerOn} onChange={setTimerOn} size="small" />
-            <Text type="secondary" className="text-xs">倒计时</Text>
-          </Space>
-          {timerOn && !showAnswer && <Tag color={timeLeft <= 10 ? 'red' : 'blue'}>{timeLeft}s</Tag>}
+            <span>倒计时</span>
+          </div>
+          {timerOn && !showAnswer && (
+            <span className={`${styles.timerPill} ${timeLeft <= 10 ? styles.timerPillDanger : ''}`}>
+              {timeLeft}s
+            </span>
+          )}
         </div>
 
-        <div className="mb-4">
-          <div className="flex flex-wrap justify-center items-center gap-3">
-            <Tag color="green">✓ {pass}</Tag>
-            <Tag color="default">共 {all}</Tag>
-            <Tag color="blue">{accuracy}%</Tag>
-            {combo >= 2 && <Tag color="orange" icon={<FireOutlined />}>{combo}连击</Tag>}
-            <Tag color="purple">{userInput.length}/{currentScore.notes.length}</Tag>
-          </div>
-          <Progress percent={progressPercent} showInfo={false} className="mt-2" size="small" />
+        {/* 统计区 */}
+        <div className={styles.stats}>
+          <span className={`${styles.statPill} ${styles.statPillCorrect}`}>✓ {pass}</span>
+          <span className={styles.statPill}>共 {all}</span>
+          <span className={`${styles.statPill} ${styles.statPillAccent}`}>{accuracy}%</span>
+          {combo >= 2 && (
+            <span className={`${styles.statPill} ${styles.statPillCombo}`}>
+              <FireOutlined /> {combo}连击
+            </span>
+          )}
+          <span className={`${styles.statPill} ${styles.statPillPurple}`}>
+            {userInput.length}/{currentScore.notes.length}
+          </span>
+        </div>
+        <div style={{ marginBottom: 20 }}>
+          <Progress
+            percent={progressPercent}
+            showInfo={false}
+            size="small"
+            strokeColor={{ '0%': '#1456f0', '100%': '#3b82f6' }}
+            trailColor="var(--border-light)"
+          />
         </div>
 
         {/* 五线谱 */}
-        <div className="border border-gray-200 rounded-lg p-4 min-h-[120px] bg-white mb-5 overflow-x-auto"
-          ref={sheetRef} />
+        <div className={`${styles.sheetBox} ${styles.sheetBoxShort}`} ref={sheetRef} />
 
         {/* 播放按钮 */}
-        <div className="text-center mb-5">
-          <Button type="primary" size="large" icon={<PlayCircleOutlined />}
-            onClick={playScore} loading={isPlaying}>
-            播放示范 <Tag className="ml-2" color="default">Space</Tag>
-          </Button>
-          <Button size="large" icon={<SyncOutlined />} onClick={generateQuestion} className="ml-3">
-            换题 <Tag className="ml-1" color="default">→</Tag>
-          </Button>
+        <div className={styles.playBar}>
+          <button className={styles.btnPrimary} onClick={playScore} disabled={isPlaying} type="button">
+            <PlayCircleOutlined /> 播放示范 <span className={styles.kbd}>Space</span>
+          </button>
+          <button className={styles.btnSecondary} onClick={generateQuestion} type="button">
+            <SyncOutlined /> 换题 <span className={styles.kbd}>→</span>
+          </button>
         </div>
 
         {/* 用户输入音符显示 */}
-        <div className="flex justify-center gap-1 mb-5 flex-wrap">
+        <div className={styles.noteStrip}>
           {currentScore.notes.map((note, idx) => {
-            let bg = 'bg-gray-100 text-gray-500 border-gray-300'
+            let cls = styles.noteCell
             if (idx < userInput.length) {
-              bg = userInput[idx] === note
-                ? 'bg-green-100 text-green-700 border-green-400'
-                : 'bg-red-100 text-red-700 border-red-400'
+              cls = `${styles.noteCell} ${userInput[idx] === note ? styles.noteCellCorrect : styles.noteCellWrong}`
             } else if (showAnswer) {
-              bg = 'bg-blue-50 text-blue-600 border-blue-300'
+              cls = `${styles.noteCell} ${styles.noteCellAnswer}`
             }
             return (
-              <div key={idx} className={`px-2 py-1 rounded text-xs font-medium border ${bg} min-w-[36px] text-center`}>
+              <div key={idx} className={cls}>
                 {idx < userInput.length ? userInput[idx] : (showAnswer ? note : '?')}
               </div>
             )
@@ -261,25 +295,36 @@ export default function StaffNotePractice() {
         </div>
 
         {/* 虚拟钢琴键盘 */}
-        <div className="flex justify-center overflow-x-auto pb-2">
-          <div className="relative inline-block" style={{ minWidth: '700px' }}>
+        <div className={styles.pianoScroll}>
+          <div className={styles.pianoInner}>
             {/* 白键 */}
-            <div className="flex">
-              {PIANO_WHITE_NOTES.map((note) => (
-                <button key={note}
-                  onClick={() => handleNoteInput(note)}
-                  disabled={showAnswer}
-                  className={`w-12 h-28 md:h-32 border border-gray-300 rounded-b-lg flex flex-col items-center justify-end pb-2
-                    transition-colors duration-100
-                    ${activeKey === note ? 'bg-blue-200' : 'bg-white hover:bg-gray-100'}
-                    ${showAnswer && currentScore.notes.includes(note) ? 'bg-blue-50' : ''}
-                    ${showAnswer ? 'cursor-default' : 'cursor-pointer active:bg-blue-200'}`}>
-                  <span className="text-xs text-gray-500 mb-1">{note.replace(/\d/, '')}</span>
-                </button>
-              ))}
+            <div className={styles.whiteRow}>
+              {PIANO_WHITE_NOTES.map((note) => {
+                const isActive = activeKey === note
+                const isAnswerHint = showAnswer && currentScore.notes.includes(note)
+                const cls = [
+                  styles.whiteKey,
+                  showAnswer ? styles.whiteKeyDisabled : '',
+                  isActive ? styles.whiteKeyActive : '',
+                  !isActive && isAnswerHint ? styles.whiteKeyHint : '',
+                ].join(' ')
+                return (
+                  <button
+                    key={note}
+                    onClick={() => handleNoteInput(note)}
+                    disabled={showAnswer}
+                    className={cls}
+                    type="button"
+                  >
+                    <span className={`${styles.keyText} ${isActive ? styles.keyTextOnActive : ''}`}>
+                      {note.replace(/\d/, '')}
+                    </span>
+                  </button>
+                )
+              })}
             </div>
             {/* 黑键 */}
-            <div className="absolute top-0 left-0">
+            <div className={styles.blackLayer}>
               {PIANO_WHITE_NOTES.map((whiteNote, whiteIdx) => {
                 const whiteBase = whiteNote.replace(/\d/, '')
                 const octave = whiteNote.match(/\d/)?.[0] || '4'
@@ -289,18 +334,26 @@ export default function StaffNotePractice() {
                 if (whiteBase === 'E' || whiteBase === 'B') return null
 
                 const leftPos = (whiteIdx + 1) * 48 - 16
+                const isActive = activeKey === blackNote
+                const isAnswerHint = showAnswer && currentScore.notes.includes(blackNote)
+                const cls = [
+                  styles.blackKey,
+                  isActive ? styles.blackKeyActive : '',
+                  !isActive && isAnswerHint ? styles.blackKeyHint : '',
+                ].join(' ')
 
                 return (
-                  <button key={blackNote}
+                  <button
+                    key={blackNote}
                     onClick={() => handleNoteInput(blackNote)}
                     disabled={showAnswer}
                     style={{ left: `${leftPos}px` }}
-                    className={`absolute w-8 h-18 md:h-20 bg-gray-800 rounded-b-lg flex flex-col items-center justify-end pb-1
-                      transition-colors duration-100 z-10
-                      ${activeKey === blackNote ? 'bg-blue-500' : 'hover:bg-gray-700'}
-                      ${showAnswer && currentScore.notes.includes(blackNote) ? 'bg-blue-600' : ''}
-                      ${showAnswer ? 'cursor-default' : 'cursor-pointer active:bg-blue-500'}`}>
-                    <span className="text-xs text-gray-300 mb-1">{blackNote.replace(/\d/, '').replace('#', '♯')}</span>
+                    className={cls}
+                    type="button"
+                  >
+                    <span className={styles.blackKeyText}>
+                      {blackNote.replace(/\d/, '').replace('#', '♯')}
+                    </span>
                   </button>
                 )
               })}
@@ -309,21 +362,21 @@ export default function StaffNotePractice() {
         </div>
 
         {showAnswer && (
-          <div className={`mt-5 text-center p-3 rounded-lg ${feedback === 'correct' ? 'bg-green-50' : 'bg-red-50'}`}>
-            <Text type={feedback === 'correct' ? 'success' : 'danger'} strong>
-              {feedback === 'correct' ? '✓ 演奏正确！' : '✗ 有错误！绿色=正确，红色=错误，蓝色=正确答案'}
-            </Text>
+          <div className={`${styles.feedback} ${feedback === 'correct' ? styles.feedbackCorrect : styles.feedbackWrong}`}>
+            {feedback === 'correct' ? '✓ 演奏正确！' : '✗ 有错误！绿色=正确，红色=错误，蓝色=正确答案'}
           </div>
         )}
 
-        <div className="mt-5 text-center">
-          <Text type="secondary" className="text-xs">
-            快捷键：<Tag color="default" className="text-xs">Space</Tag> 播放示范
-            <Tag color="default" className="text-xs ml-1">→</Tag> 换题
-            <Tag color="default" className="text-xs ml-1">点击琴键</Tag> 输入音符
-          </Text>
+        <div className={styles.shortcuts}>
+          <span>快捷键：</span>
+          <span className={styles.kbd}>Space</span>
+          <span>播放示范</span>
+          <span className={styles.kbd}>→</span>
+          <span>换题</span>
+          <span className={styles.kbd}>点击琴键</span>
+          <span>输入音符</span>
         </div>
-      </Card>
+      </div>
     </div>
   )
 }

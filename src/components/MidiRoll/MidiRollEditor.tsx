@@ -1,21 +1,16 @@
 'use client'
 
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { Card, Button, Slider, Select, Typography, Space, Tooltip, Row, Col, message } from 'antd'
+import { Slider, Select } from 'antd'
 import {
   PlayCircleOutlined,
   PauseCircleOutlined,
   DeleteOutlined,
   UndoOutlined,
   RedoOutlined,
-  SaveOutlined,
-  ClearOutlined,
-  PlusOutlined,
-  MinusOutlined,
 } from '@ant-design/icons'
 import { moaTone } from '@/utils/MoaTone'
-
-const { Title, Text } = Typography
+import styles from './midiroll.module.scss'
 
 interface MidiNote {
   id: string
@@ -33,7 +28,7 @@ const midiToNoteName = (midi: number): string => {
   return `${NOTE_NAMES[noteIndex]}${octave}`
 }
 
-const COLORS = ['#1677ff', '#52c41a', '#fa8c16', '#eb2f96', '#722ed1', '#13c2c2', '#faad14', '#f5222d']
+const COLORS = ['#1456f0', '#22c55e', '#f59e0b', '#ea5ec1', '#8b5cf6', '#06b6d4', '#eab308', '#ef4444']
 
 // 预设旋律
 const PRESETS: { name: string; notes: { pitch: number; start: number; duration: number }[] }[] = [
@@ -76,7 +71,7 @@ export default function MidiRollEditor() {
   const [tempo, setTempo] = useState(120)
   const [steps, setSteps] = useState(16)
   const [octaveStart, setOctaveStart] = useState(3)
-  const [octaveCount, setOctaveCount] = useState(3)
+  const [octaveCount] = useState(3)
   const [activeKeys, setActiveKeys] = useState<Set<number>>(new Set())
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState<{ pitch: number; step: number } | null>(null)
@@ -263,6 +258,7 @@ export default function MidiRollEditor() {
   // 键盘快捷键
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
       if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
         e.preventDefault()
         e.shiftKey ? redo() : undo()
@@ -294,70 +290,100 @@ export default function MidiRollEditor() {
     : null
 
   return (
-    <div className="max-w-full mx-auto p-4 md:p-6">
-      <div className="text-center mb-4">
-        <Title level={2} style={{ marginBottom: 4 }}>🎹 MIDI 钢琴卷帘</Title>
-        <Text type="secondary">拖拽绘制音符，空格键播放，点击钢琴键试听</Text>
+    <div className={styles.page}>
+      <div className={styles.head}>
+        <h2 className={styles.title}>🎹 MIDI 钢琴卷帘</h2>
+        <p className={styles.subtitle}>拖拽绘制音符，空格键播放，点击钢琴键试听</p>
       </div>
 
       {/* 控制栏 */}
-      <Card className="mb-4" size="small">
-        <Row gutter={[12, 8]} align="middle">
-          <Col>
-            <Space>
-              <Button type="primary" size="large"
-                icon={isPlaying ? <PauseCircleOutlined /> : <PlayCircleOutlined />}
-                onClick={isPlaying ? stopPlaying : startPlaying}
-              >
-                {isPlaying ? '停止' : '播放'}
-              </Button>
-              <Button icon={<UndoOutlined />} onClick={undo} disabled={historyIndex <= 0}>撤销</Button>
-              <Button icon={<RedoOutlined />} onClick={redo} disabled={historyIndex >= history.length - 1}>重做</Button>
-              <Button icon={<DeleteOutlined />} onClick={clearAll} danger>清空</Button>
-            </Space>
-          </Col>
-          <Col flex="auto">
-            <Space wrap>
-              <span className="text-xs text-gray-500">工具:</span>
-              <Button size="small" type={selectedTool === 'draw' ? 'primary' : 'default'}
-                onClick={() => setSelectedTool('draw')}>✏️ 绘制</Button>
-              <Button size="small" type={selectedTool === 'erase' ? 'primary' : 'default'}
-                onClick={() => setSelectedTool('erase')}>🧹 擦除</Button>
-              <span className="text-xs text-gray-500 ml-2">速度:</span>
-              <Slider min={40} max={240} value={tempo} onChange={setTempo} style={{ width: 100 }} />
-              <span className="text-xs">{tempo} BPM</span>
-              <span className="text-xs text-gray-500 ml-2">长度:</span>
-              <Select size="small" value={steps} onChange={setSteps}
-                options={[8, 16, 32, 48, 64].map(v => ({ value: v, label: `${v} 步` }))} style={{ width: 75 }} />
-              <span className="text-xs text-gray-500 ml-2">八度:</span>
-              <Select size="small" value={octaveStart} onChange={setOctaveStart}
-                options={[1, 2, 3, 4, 5].map(v => ({ value: v, label: `C${v}` }))} style={{ width: 60 }} />
-            </Space>
-          </Col>
-        </Row>
+      <div className={styles.card}>
+        <div className={styles.controls}>
+          <button
+            className={styles.btnPrimary}
+            onClick={isPlaying ? stopPlaying : startPlaying}
+            type="button"
+          >
+            {isPlaying ? <PauseCircleOutlined /> : <PlayCircleOutlined />}
+            {isPlaying ? '停止' : '播放'}
+          </button>
+          <button className={styles.btnGhost} onClick={undo} disabled={historyIndex <= 0} type="button">
+            <UndoOutlined /> 撤销
+          </button>
+          <button className={styles.btnGhost} onClick={redo} disabled={historyIndex >= history.length - 1} type="button">
+            <RedoOutlined /> 重做
+          </button>
+          <button className={styles.btnDanger} onClick={clearAll} type="button">
+            <DeleteOutlined /> 清空
+          </button>
+
+          <div className={styles.toolGroup}>
+            <button
+              className={`${styles.toolItem} ${selectedTool === 'draw' ? styles.toolItemActive : ''}`}
+              onClick={() => setSelectedTool('draw')}
+              type="button"
+            >
+              ✏️ 绘制
+            </button>
+            <button
+              className={`${styles.toolItem} ${selectedTool === 'erase' ? styles.toolItemActive : ''}`}
+              onClick={() => setSelectedTool('erase')}
+              type="button"
+            >
+              🧹 擦除
+            </button>
+          </div>
+
+          <div className={styles.controlGroup}>
+            <span className={styles.label}>速度</span>
+            <Slider min={40} max={240} value={tempo} onChange={setTempo} style={{ width: 100 }} />
+            <span className={styles.label}>{tempo} BPM</span>
+          </div>
+
+          <div className={styles.controlGroup}>
+            <span className={styles.label}>长度</span>
+            <Select
+              size="small"
+              value={steps}
+              onChange={setSteps}
+              options={[8, 16, 32, 48, 64].map(v => ({ value: v, label: `${v} 步` }))}
+              style={{ width: 84 }}
+            />
+          </div>
+
+          <div className={styles.controlGroup}>
+            <span className={styles.label}>起始八度</span>
+            <Select
+              size="small"
+              value={octaveStart}
+              onChange={setOctaveStart}
+              options={[1, 2, 3, 4, 5].map(v => ({ value: v, label: `C${v}` }))}
+              style={{ width: 68 }}
+            />
+          </div>
+        </div>
 
         {/* 预设 */}
-        <div className="mt-2">
-          <Space wrap size={[4, 4]}>
-            <Text type="secondary" className="text-xs">预设:</Text>
-            {PRESETS.map((p, i) => (
-              <Button key={i} size="small" onClick={() => loadPreset(p)}>{p.name}</Button>
-            ))}
-          </Space>
+        <div className={styles.presetRow}>
+          <span className={styles.label}>预设</span>
+          {PRESETS.map((p, i) => (
+            <button key={i} className={styles.presetBtn} onClick={() => loadPreset(p)} type="button">
+              {p.name}
+            </button>
+          ))}
         </div>
-      </Card>
+      </div>
 
       {/* 卷帘区域 */}
-      <Card size="small" bodyStyle={{ padding: 0 }}>
-        <div className="overflow-x-auto">
-          <div className="min-w-[500px]" style={{ height: visibleNotes * ROW_H + HEADER_H + 4 }}>
+      <div className={`${styles.card} ${styles.cardFlush}`}>
+        <div className={styles.rollScroll}>
+          <div className={styles.rollInner} style={{ height: visibleNotes * ROW_H + HEADER_H + 4 }}>
             {/* 时间轴 */}
-            <div className="flex sticky top-0 z-20 bg-gray-50 dark:bg-gray-800 border-b" style={{ height: HEADER_H, marginLeft: KEYBOARD_W }}>
+            <div className={styles.timeline} style={{ height: HEADER_H, marginLeft: KEYBOARD_W }}>
               {Array.from({ length: steps }).map((_, i) => (
-                <div key={i}
-                  className={`flex-1 flex items-center justify-center text-xs border-r border-gray-200
-                    ${currentStep === i ? 'bg-blue-200 dark:bg-blue-800' : ''}
-                    ${i % 4 === 0 ? 'font-bold' : ''}`}
+                <div
+                  key={i}
+                  className={`${styles.timelineCell} ${i % 4 === 0 ? styles.timelineCellBeat : ''} ${currentStep === i ? styles.timelineCellActive : ''}`}
                 >
                   {i % 4 === 0 ? i / 4 + 1 : ''}
                 </div>
@@ -365,20 +391,25 @@ export default function MidiRollEditor() {
             </div>
 
             {/* 网格 + 键盘 */}
-            <div className="flex">
+            <div className={styles.rollBody}>
               {/* 钢琴键盘 */}
-              <div className="shrink-0 bg-gray-100 dark:bg-gray-800 border-r" style={{ width: KEYBOARD_W }}>
+              <div className={styles.keyColumn} style={{ width: KEYBOARD_W }}>
                 {Array.from({ length: visibleNotes }).map((_, i) => {
                   const noteNum = endNote - i - 1
                   const isBlack = NOTE_NAMES[noteNum % 12].includes('#')
                   const isActive = activeKeys.has(noteNum)
+                  const cls = [
+                    styles.keyRow,
+                    isBlack ? styles.keyRowBlack : '',
+                    isActive ? styles.keyRowActive : '',
+                  ].join(' ')
                   return (
-                    <button key={noteNum}
+                    <button
+                      key={noteNum}
                       onMouseDown={(e) => { e.preventDefault(); playNote(noteNum, 0.5) }}
-                      className={`w-full flex items-center justify-end pr-1 text-xs cursor-pointer border-b border-gray-200
-                        ${isBlack ? 'bg-gray-700 text-white' : 'bg-white dark:bg-gray-900'}
-                        ${isActive ? '!bg-blue-500 !text-white' : ''}`}
+                      className={cls}
                       style={{ height: ROW_H }}
+                      type="button"
                     >
                       {NOTE_NAMES[noteNum % 12]}
                     </button>
@@ -387,7 +418,9 @@ export default function MidiRollEditor() {
               </div>
 
               {/* 网格区域 */}
-              <div className="flex-1 relative" ref={containerRef}
+              <div
+                className={styles.gridArea}
+                ref={containerRef}
                 onMouseLeave={() => { setIsDragging(false); setDragStart(null); setDragCurrent(null) }}
               >
                 {/* 背景网格 */}
@@ -395,14 +428,11 @@ export default function MidiRollEditor() {
                   const noteNum = endNote - rowIdx - 1
                   const isBlack = NOTE_NAMES[noteNum % 12].includes('#')
                   return (
-                    <div key={noteNum} className="flex" style={{ height: ROW_H }}>
+                    <div key={noteNum} className={styles.gridRow} style={{ height: ROW_H }}>
                       {Array.from({ length: steps }).map((_, step) => (
-                        <div key={step}
-                          className={`flex-1 border-r border-b border-gray-100 dark:border-gray-800
-                            ${isBlack ? 'bg-gray-50 dark:bg-gray-900' : 'bg-white dark:bg-gray-950'}
-                            ${step % 4 === 0 ? 'border-l-2 border-l-gray-300 dark:border-l-gray-600' : ''}
-                            ${currentStep === step ? 'bg-blue-50 dark:bg-blue-900/30' : ''}
-                            cursor-crosshair hover:bg-blue-50 dark:hover:bg-blue-900/20`}
+                        <div
+                          key={step}
+                          className={`${styles.gridCell} ${isBlack ? styles.gridCellBlack : ''} ${step % 4 === 0 ? styles.gridCellBeat : ''} ${currentStep === step ? styles.gridCellActive : ''}`}
                           onMouseDown={(e) => handleCellMouseDown(noteNum, step, e)}
                           onMouseEnter={() => handleCellMouseEnter(noteNum, step)}
                           onMouseUp={() => handleCellMouseUp(noteNum, step)}
@@ -416,13 +446,12 @@ export default function MidiRollEditor() {
                 {notes.map(note => {
                   const rowIdx = endNote - note.pitch - 1
                   if (rowIdx < 0 || rowIdx >= visibleNotes) return null
-                  const stepW = `${100 / steps}%`
-                  const color = COLORS[(note.pitch - startNote) % COLORS.length]
+                  const color = COLORS[(note.pitch - startNote + COLORS.length) % COLORS.length]
 
                   return (
-                    <div key={note.id}
-                      className={`absolute rounded-sm cursor-pointer transition-colors hover:brightness-110
-                        ${activeKeys.has(note.pitch) ? 'ring-2 ring-white' : ''}`}
+                    <div
+                      key={note.id}
+                      className={`${styles.noteBlock} ${activeKeys.has(note.pitch) ? styles.noteBlockActive : ''}`}
                       style={{
                         left: `${(note.start / steps) * 100}%`,
                         top: rowIdx * ROW_H + 1,
@@ -443,7 +472,7 @@ export default function MidiRollEditor() {
                       }}
                     >
                       {note.duration >= steps * 0.04 && (
-                        <span className="text-white text-xs px-1 truncate block leading-tight" style={{ lineHeight: `${ROW_H - 2}px` }}>
+                        <span className={styles.noteBlockLabel} style={{ lineHeight: `${ROW_H - 2}px` }}>
                           {midiToNoteName(note.pitch)}
                         </span>
                       )}
@@ -453,7 +482,8 @@ export default function MidiRollEditor() {
 
                 {/* 拖拽预览 */}
                 {dragPreview && (
-                  <div className="absolute rounded-sm bg-blue-400/50 border border-blue-500 pointer-events-none"
+                  <div
+                    className={styles.dragPreview}
                     style={{
                       left: `${(dragPreview.start / steps) * 100}%`,
                       top: (endNote - dragPreview.pitch - 1) * ROW_H + 1,
@@ -465,7 +495,8 @@ export default function MidiRollEditor() {
 
                 {/* 播放线 */}
                 {currentStep >= 0 && (
-                  <div className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-30 pointer-events-none"
+                  <div
+                    className={styles.playhead}
                     style={{ left: `${((currentStep + 0.5) / steps) * 100}%` }}
                   />
                 )}
@@ -473,10 +504,10 @@ export default function MidiRollEditor() {
             </div>
           </div>
         </div>
-      </Card>
+      </div>
 
       {/* 底部信息 */}
-      <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg flex flex-wrap justify-between items-center text-sm text-gray-600 dark:text-gray-400">
+      <div className={styles.infoBar}>
         <span>音符数: <strong>{notes.length}</strong></span>
         <span>总步数: <strong>{steps}</strong> ({(steps / 4).toFixed(1)} 拍)</span>
         <span>八度: <strong>C{octaveStart} - B{octaveStart + octaveCount - 1}</strong></span>
@@ -484,9 +515,9 @@ export default function MidiRollEditor() {
       </div>
 
       {/* 快捷键提示 */}
-      <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-        <Text strong className="text-sm">💡 快捷键：</Text>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-1 text-xs text-gray-600 dark:text-gray-400">
+      <div className={styles.shortcutPanel}>
+        <span className={styles.shortcutPanelTitle}>💡 快捷键</span>
+        <div className={styles.shortcutGrid}>
           <span>空格键 — 播放/停止</span>
           <span>Ctrl+Z — 撤销</span>
           <span>Ctrl+Shift+Z — 重做</span>

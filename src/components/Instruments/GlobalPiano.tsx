@@ -1,15 +1,14 @@
 'use client'
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { Button, Slider, Select, Space, Tooltip } from 'antd'
+import { Select, Slider, Tooltip } from 'antd'
 import {
   SoundOutlined,
   LeftOutlined,
   RightOutlined,
-  CaretUpOutlined,
-  CaretDownOutlined,
 } from '@ant-design/icons'
 import { moaTone, SynthType } from '@/utils/MoaTone'
+import styles from './instruments.module.scss'
 
 // ───────────────────────────── 类型 ─────────────────────────────
 interface PianoKey {
@@ -19,8 +18,6 @@ interface PianoKey {
   label: string        // 白键上显示的音名+八度
   shortcut: string     // 键盘快捷键提示
 }
-
-type OctaveRange = [number, number] // [lowOctave, highOctave]
 
 // ───────────────────────────── 常量 ─────────────────────────────
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
@@ -82,11 +79,9 @@ export default function GlobalPiano() {
   const [volume, setVolume] = useState(0.6)
   const [initialized, setInitialized] = useState(false)
   const activeKeysRef = useRef<Set<string>>(new Set())
-  const synthRef = useRef<SynthType>(synthType)
   const volRef = useRef(volume)
 
   // 同步 ref
-  useEffect(() => { synthRef.current = synthType }, [synthType])
   useEffect(() => { volRef.current = volume }, [volume])
 
   // 初始化音频
@@ -226,42 +221,38 @@ export default function GlobalPiano() {
     return totalPrevWhite * WHITE_KEY_WIDTH + WHITE_KEY_WIDTH - BLACK_KEY_WIDTH / 2
   }
 
-  const whiteKeyPositions = useMemo(() => {
-    const positions: Record<string, number> = {}
-    whiteKeys.forEach((key, i) => {
-      positions[key.note] = i * WHITE_KEY_WIDTH
-    })
-    return positions
-  }, [whiteKeys])
-
   const totalWidth = whiteKeys.length * WHITE_KEY_WIDTH
 
   return (
-    <div className="flex flex-col items-center gap-4 select-none" style={{ minWidth: totalWidth + 32 }}>
+    <div className={styles.pianoWrap} style={{ minWidth: totalWidth + 32 }}>
       {/* ── 控制栏 ── */}
-      <div className="flex flex-wrap items-center justify-center gap-4 w-full max-w-2xl px-2">
+      <div className={styles.pianoControls}>
         {/* 八度切换 */}
-        <Space size={4}>
+        <div className={styles.octaveGroup}>
           <Tooltip title="降低八度">
-            <Button
-              size="small"
-              icon={<LeftOutlined />}
+            <button
+              className={styles.octaveBtn}
               disabled={octaveOffset <= -2}
               onClick={() => setOctaveOffset(o => o - 1)}
-            />
+              aria-label="降低八度"
+            >
+              <LeftOutlined />
+            </button>
           </Tooltip>
-          <span className="text-xs font-medium w-16 text-center text-[var(--text-secondary)]">
+          <span className={styles.octaveLabel}>
             C{3 + octaveOffset} - C{6 + octaveOffset}
           </span>
           <Tooltip title="升高八度">
-            <Button
-              size="small"
-              icon={<RightOutlined />}
+            <button
+              className={styles.octaveBtn}
               disabled={octaveOffset >= 2}
               onClick={() => setOctaveOffset(o => o + 1)}
-            />
+              aria-label="升高八度"
+            >
+              <RightOutlined />
+            </button>
           </Tooltip>
-        </Space>
+        </div>
 
         {/* 音色选择 */}
         <Select
@@ -274,8 +265,8 @@ export default function GlobalPiano() {
         />
 
         {/* 音量 */}
-        <Space size={4} className="w-32">
-          <SoundOutlined className="text-xs text-[var(--text-secondary)]" />
+        <div className={styles.volumeWrap} style={{ width: 140 }}>
+          <SoundOutlined />
           <Slider
             min={0}
             max={1}
@@ -285,32 +276,23 @@ export default function GlobalPiano() {
             tooltip={{ formatter: (v) => `${Math.round((v ?? 0.5) * 100)}%` }}
             style={{ margin: 0, flex: 1 }}
           />
-        </Space>
+        </div>
       </div>
 
       {/* ── 键盘提示 ── */}
-      <p className="text-xs text-[var(--text-secondary)] m-0">
+      <p className={styles.keyboardHint}>
         键盘: Z~M 白键 | S D G H J 黑键 | 按住拖拽滑音
       </p>
 
       {/* ── 钢琴键盘 ── */}
-      <div
-        className="relative overflow-x-auto"
-        style={{ maxWidth: '100%' }}
-      >
-        <div className="relative inline-block" style={{ width: totalWidth, height: WHITE_KEY_HEIGHT + 4 }}>
+      <div className={styles.pianoScroll}>
+        <div className={styles.pianoKeys} style={{ width: totalWidth, height: WHITE_KEY_HEIGHT + 4 }}>
           {/* 白键 */}
           {whiteKeys.map((key, index) => (
             <div
               key={key.note}
               data-note={key.note}
-              className={`
-                absolute bottom-0 border border-[var(--border-color)] rounded-b-md cursor-pointer
-                transition-colors duration-80 select-none
-                ${activeKeys.has(key.note)
-                  ? 'bg-gradient-to-b from-blue-100 to-blue-200'
-                  : 'bg-[var(--key-white)] hover:bg-[var(--key-white-hover)]'}
-              `}
+              className={`${styles.whiteKey} ${activeKeys.has(key.note) ? styles.whiteKeyActive : ''}`}
               style={{
                 left: index * WHITE_KEY_WIDTH,
                 width: WHITE_KEY_WIDTH - 1,
@@ -323,14 +305,10 @@ export default function GlobalPiano() {
               onTouchEnd={(e) => { e.preventDefault(); handleKeyUp(key.note) }}
             >
               {/* 音符标签 */}
-              <div className="absolute bottom-2 left-0 right-0 text-center">
-                <span className="text-[11px] font-medium text-[var(--text-secondary)] leading-tight block">
-                  {key.label}
-                </span>
+              <div className={styles.keyLabelWrap}>
+                <span className={styles.keyLabel}>{key.label}</span>
                 {key.shortcut && (
-                  <span className="text-[9px] text-[var(--text-muted)] bg-[var(--bg-secondary)] rounded px-1 py-px">
-                    {key.shortcut.toUpperCase()}
-                  </span>
+                  <span className={styles.keyShortcut}>{key.shortcut.toUpperCase()}</span>
                 )}
               </div>
             </div>
@@ -343,13 +321,7 @@ export default function GlobalPiano() {
               <div
                 key={key.note}
                 data-note={key.note}
-                className={`
-                  absolute top-0 rounded-b-md cursor-pointer z-10 select-none
-                  transition-colors duration-80
-                  ${activeKeys.has(key.note)
-                    ? 'bg-gradient-to-b from-blue-400 to-blue-600'
-                    : 'bg-[var(--key-black)] hover:bg-[var(--key-black-hover)]'}
-                `}
+                className={`${styles.blackKey} ${activeKeys.has(key.note) ? styles.blackKeyActive : ''}`}
                 style={{
                   left,
                   width: BLACK_KEY_WIDTH,
@@ -363,10 +335,8 @@ export default function GlobalPiano() {
               >
                 {/* 黑键快捷键 */}
                 {key.shortcut && (
-                  <div className="absolute bottom-1 left-0 right-0 text-center">
-                    <span className="text-[8px] text-white/60 bg-black/30 rounded px-1 py-px">
-                      {key.shortcut.toUpperCase()}
-                    </span>
+                  <div style={{ position: 'absolute', bottom: 4, left: 0, right: 0, textAlign: 'center' }}>
+                    <span className={styles.blackKeyShortcut}>{key.shortcut.toUpperCase()}</span>
                   </div>
                 )}
               </div>
@@ -376,9 +346,9 @@ export default function GlobalPiano() {
       </div>
 
       {!initialized && (
-        <Button type="primary" icon={<SoundOutlined />} onClick={initAudio}>
-          点击初始化音频
-        </Button>
+        <button className={styles.btnPrimary} onClick={initAudio} type="button">
+          <SoundOutlined /> 点击初始化音频
+        </button>
       )}
     </div>
   )
